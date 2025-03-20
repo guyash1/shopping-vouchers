@@ -272,6 +272,7 @@ export default function Vouchers() {
             }
             
             // הוספת השובר למשק הבית או למשתמש
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const voucherId = await vouchersService.addVoucher(user.uid, {
                 storeName: voucherData.storeName,
                 amount: voucherData.amount,
@@ -405,80 +406,9 @@ export default function Vouchers() {
         }
     };
 
-    // פונקציות לדיאלוג החדש
-    const toggleVoucherUsed = async (voucher: Voucher) => {
-        if (!user) return;
-        
-        try {
-            setLoading(true);
-            await vouchersService.toggleVoucherUsed(voucher.id, !voucher.isUsed);
-            // עדכון מקומי
-            const updatedVouchers = vouchers.map(v => {
-                if (v.id === voucher.id) {
-                    return { ...v, isUsed: !v.isUsed };
-                }
-                return v;
-            });
-            setVouchers(updatedVouchers);
-        } catch (error: any) {
-            console.error('שגיאה בעדכון מצב שימוש בשובר:', error);
-            alert(`שגיאה בעדכון מצב שימוש בשובר: ${error.message || 'אירעה שגיאה'}`);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // עדכון תוקף השובר
-    const updateVoucherExpiryDate = async (voucherId: string, expiryDate: string | null) => {
-        if (!user) return;
-        
-        try {
-            setLoading(true);
-            await vouchersService.updateVoucher(voucherId, {
-                expiryDate: expiryDate || undefined
-            });
-            
-            // עדכון מקומי
-            const updatedVouchers = vouchers.map(v => {
-                if (v.id === voucherId) {
-                    return { ...v, expiryDate: expiryDate || undefined };
-                }
-                return v;
-            });
-            setVouchers(updatedVouchers);
-        } catch (error: any) {
-            console.error('שגיאה בעדכון תאריך תפוגה:', error);
-            alert(`שגיאה בעדכון תאריך תפוגה: ${error.message || 'אירעה שגיאה'}`);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     if (!user) {
         return <div className="p-4 text-center">יש להתחבר כדי לצפות בשוברים</div>;
     }
-
-    // בדיקת תוקף שובר
-    const isExpiredVoucher = (date: string) => {
-        return new Date(date) < new Date();
-    };
-    
-    // בדיקת שובר שעומד לפוג
-    const isAlmostExpired = (date: string) => {
-        const expiryDate = new Date(date);
-        const today = new Date();
-        const timeDiff = expiryDate.getTime() - today.getTime();
-        const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-        return daysDiff > 0 && daysDiff <= 7;
-    };
-    
-    // חישוב ימים עד פג תוקף
-    const daysUntilExpiry = (date: string) => {
-        const expiryDate = new Date(date);
-        const today = new Date();
-        const timeDiff = expiryDate.getTime() - today.getTime();
-        return Math.ceil(timeDiff / (1000 * 3600 * 24));
-    };
 
     return (
         <div className="p-4 max-w-3xl mx-auto pb-24">

@@ -15,7 +15,6 @@ import {
   deleteField
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { User } from 'firebase/auth';
 import { Item } from '../types/shopping';
 import { Voucher } from '../types/vouchers';
 import { Household } from '../types/household';

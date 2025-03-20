@@ -36,19 +36,6 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = ({
     }
   };
 
-  const getStatusIcon = (status: Item['status']) => {
-    switch (status) {
-      case 'inCart':
-        return <ShoppingCart className="w-5 h-5 text-green-500" />;
-      case 'partial':
-        return <MinusCircle className="w-5 h-5 text-yellow-500" />;
-      case 'missing':
-        return <AlertCircle className="w-5 h-5 text-red-500" />;
-      default:
-        return null;
-    }
-  };
-
   const handleStatusToggle = (status: Item['status']) => {
     // אם כבר לחוץ על הסטטוס, מחזירים למצב רגיל, אחרת מעדכנים לסטטוס החדש
     const newStatus = item.status === status ? 'pending' : status;
