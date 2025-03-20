@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // פונקציות עזר לאימות משתמשים
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isImageFile() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isValidImageSize() {
+      return request.resource.size <= 5 * 1024 * 1024; // 5MB
+    }
+    
+    // חוקים עבור תיקיית השוברים
+    match /vouchers/{userId}/{fileName} {
+      // קריאה ועדכון רק למשתמש עצמו
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId)
+                   && isImageFile()
+                   && isValidImageSize();
+      allow delete: if isOwner(userId);
+    }
+    
+    // חוקים עבור תיקיות של פריטי רשימת קניות
+    match /items/{userId}/{fileName} {
+      // קריאה ועדכון רק למשתמש עצמו
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId)
+                   && isImageFile()
+                   && isValidImageSize();
+      allow delete: if isOwner(userId);
+    }
+    
+    // חוקים עבור תמונות פרופיל
+    match /profiles/{userId}/{fileName} {
+      // קריאה פתוחה, כתיבה רק למשתמש עצמו
+      allow read: if true;
+      allow write: if isOwner(userId)
+                   && isImageFile()
+                   && isValidImageSize();
+      allow delete: if isOwner(userId);
+    }
+    
+    // חסימת גישה לכל שאר התיקיות
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+} 
