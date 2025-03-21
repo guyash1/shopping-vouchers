@@ -667,11 +667,18 @@ export const storageService = {
   async deleteImage(imageUrl: string): Promise<void> {
     try {
       if (!imageUrl) {
-        throw new Error('Image URL is required');
+        console.warn('Image URL is empty, skipping deletion');
+        return;
       }
       
       if (!auth.currentUser) {
         throw new Error('User must be authenticated to delete images');
+      }
+      
+      // בדיקה אם ה-URL מתחיל ב-https:// (ולא בחלק של Storage)
+      if (imageUrl.startsWith('https://') && !imageUrl.includes('firebase') && !imageUrl.includes('googleusercontent')) {
+        console.warn('Cannot delete image from external URL:', imageUrl);
+        return;
       }
       
       // וידוא ששם הקובץ לא מכיל קוד זדוני
@@ -679,11 +686,21 @@ export const storageService = {
         throw new Error('Invalid image URL');
       }
       
-      // מקבלים את ה-ref מה-URL
-      const imageRef = ref(storage, imageUrl);
-      // מוחקים את התמונה
-      await deleteObject(imageRef);
+      try {
+        // מקבלים את ה-ref מה-URL
+        const imageRef = ref(storage, imageUrl);
+        // מוחקים את התמונה
+        await deleteObject(imageRef);
+      } catch (storageError: any) {
+        // אם הקובץ לא נמצא, לא נזרוק שגיאה
+        if (storageError.code === 'storage/object-not-found') {
+          console.warn('Image not found in storage, already deleted or invalid URL');
+          return;
+        }
+        throw storageError;
+      }
     } catch (error) {
+      console.error('Error deleting image:', error);
       throw error;
     }
   }

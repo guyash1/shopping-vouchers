@@ -41,6 +41,7 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
   const [showExpiryDatePicker, setShowExpiryDatePicker] = useState(false);
   const [newExpiryDate, setNewExpiryDate] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -125,6 +126,24 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
       alert('שגיאה במחיקת תאריך תפוגה');
     }
   };
+  
+  // טיפול בטוח במחיקת שובר
+  const handleSafeDelete = async () => {
+    if (isDeleting) return; // מניעת לחיצה כפולה
+    
+    try {
+      setIsDeleting(true);
+      // סגירת כל התפריטים לפני המחיקה למניעת בעיות רינדור
+      setShowExpiryDatePicker(false);
+      setShowImageOptions(false);
+      setIsEditing(false);
+      
+      // קריאה לפונקציית המחיקה
+      onDelete();
+    } catch (error) {
+      console.error('שגיאה במחיקת שובר:', error);
+    }
+  };
 
   const getBorderColor = () => {
     if (voucher.isUsed) return 'border-gray-200';
@@ -173,6 +192,31 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
     setShowExpiryDatePicker(true);
   };
 
+  // אם השובר בתהליך מחיקה, הצגת מצב טעינה במקום הכפתורים
+  if (isDeleting) {
+    return (
+      <div className={`border rounded-xl p-4 ${getBorderColor()} ${getBackgroundColor()} shadow-sm transition-shadow animate-pulse`}>
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <div className="flex justify-between mb-3">
+              <div>
+                <h3 className="font-bold text-xl text-gray-500">{voucher.storeName}</h3>
+                <div className="flex items-center mt-1">
+                  <p className="text-xl font-bold text-gray-500">₪{voucher.amount.toFixed(2)}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="p-2 rounded-full bg-gray-200">
+                  <div className="w-5 h-5"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`border rounded-xl p-4 ${getBorderColor()} ${getBackgroundColor()} ${voucher.isUsed ? 'opacity-70' : ''} shadow-sm hover:shadow-md transition-shadow`}>
       <div className="flex gap-3">
@@ -202,9 +246,10 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
               </div>
               <div className="flex flex-col items-center">
                 <button
-                  onClick={onDelete}
+                  onClick={handleSafeDelete}
                   className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors"
                   title="מחק שובר"
+                  disabled={isDeleting}
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>

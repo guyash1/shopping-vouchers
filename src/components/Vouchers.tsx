@@ -320,18 +320,46 @@ export default function Vouchers() {
         }
         
         try {
+            setLoading(true);
+            
+            // סגירת כל התפריטים לפני המחיקה
+            setActiveDropdown(null);
+            
             // מחיקת השובר
             await vouchersService.deleteVoucher(voucher.id);
             
-            // מחיקת התמונה אם יש
+            // מחיקת התמונה אם יש - נטפל בשגיאות אפשריות בנפרד
             if (voucher.imageUrl) {
-                await storageService.deleteImage(voucher.imageUrl);
+                try {
+                    await storageService.deleteImage(voucher.imageUrl);
+                } catch (imageError) {
+                    console.error('שגיאה במחיקת תמונה של שובר:', imageError);
+                    // לא נזרוק שגיאה כללית כאן, רק נרשום ביומן
+                }
             }
             
             // עדכון הסטייט המקומי
             setVouchers(prev => prev.filter(v => v.id !== voucher.id));
+            
+            // למניעת שגיאת 404, נוודא שאנחנו לא עושים פעולות שיובילו לרינדור בעייתי
+            setSelectedImage(null);
+            setIsAddModalOpen(false);
+            
+            // הוספת קצת עיכוב לאפשר לממשק להתעדכן
+            setTimeout(() => {
+                setLoading(false);
+            }, 100);
         } catch (error) {
+            console.error('שגיאה במחיקת שובר:', error);
             alert('שגיאה במחיקת שובר');
+            // למרות השגיאה, ננסה לעדכן את הרשימה במקרה שהשובר כן נמחק מהדאטהבייס
+            try {
+                await loadUserData();
+            } catch (loadError) {
+                console.error('שגיאה נוספת בטעינת נתונים:', loadError);
+            } finally {
+                setLoading(false);
+            }
         }
     };
 

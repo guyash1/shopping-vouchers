@@ -1,0 +1,18 @@
+[build]
+  publish = "build"
+  command = "npm run build"
+
+# הגדרות ניתוב SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# הגדרות אבטחה
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Content-Type-Options = "nosniff" 
