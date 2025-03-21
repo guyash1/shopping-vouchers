@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ShoppingCart, X, LogOut, HelpCircle, Home } from "lucide-react";
 import { auth, db } from '../firebase';
-import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy, serverTimestamp, Timestamp, deleteField, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp, deleteField, getDoc } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { signOut } from 'firebase/auth';
 import Modal from 'react-modal';
@@ -119,9 +119,6 @@ export default function ShoppingList() {
     
     try {
       console.log('מתחיל טעינת היסטוריה...');
-      
-      // יצירת שדות שליפה מפורטים כדי לוודא שכל השדות הנדרשים מגיעים
-      const selectFields = ['name', 'status', 'imageUrl', 'purchaseCount', 'lastPurchaseDate', 'lastPartialPurchaseDate', 'householdId', 'addedBy'];
       
       // טעינת היסטוריה ישירות מהפיירסטור בשאילתה מקיפה
       let historyQuery;
