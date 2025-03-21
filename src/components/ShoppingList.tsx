@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ShoppingCart, X, LogOut, HelpCircle, Home } from "lucide-react";
 import { auth, db } from '../firebase';
-import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy, serverTimestamp, Timestamp, deleteField } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, orderBy, serverTimestamp, Timestamp, deleteField, getDoc } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { signOut } from 'firebase/auth';
 import Modal from 'react-modal';
@@ -36,6 +36,7 @@ export default function ShoppingList() {
   const [frequentItems, setFrequentItems] = useState<string[]>([]);
   const [partialItems, setPartialItems] = useState<Item[]>([]);
   const [isHouseholdModalOpen, setIsHouseholdModalOpen] = useState(false);
+  const [household, setHousehold] = useState<any>(null);
 
   // טעינת נתוני המשתמש ופריטים
   const loadUserData = useCallback(async () => {
@@ -46,6 +47,8 @@ export default function ShoppingList() {
       
       // טעינת משק הבית של המשתמש
       const userHousehold = await householdService.getUserHousehold(user.uid);
+      // עדכון סטייט משק הבית
+      setHousehold(userHousehold || null);
       
       try {
         // טעינת הפריטים
@@ -78,8 +81,9 @@ export default function ShoppingList() {
         
         setItems(loadedItems);
         
-        // טעינת היסטוריה
-        await loadHistory();
+        // כבר לא טוענים היסטוריה כאן - useEffect ייעודי יטפל בזה
+        console.log('נטענו נתוני משתמש ופריטים פעילים בהצלחה');
+        
       } catch (error: any) {
         console.error('שגיאה בטעינת פריטים:', error);
         // בדיקה לשגיאות אינדקס כלליות
@@ -100,7 +104,6 @@ export default function ShoppingList() {
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // טעינת הפריטים מהדאטאבייס בטעינת הקומפוננטה
@@ -111,19 +114,45 @@ export default function ShoppingList() {
   }, [user, loadUserData]);
 
   // טעינת היסטוריית רכישות
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     if (!user) return;
     
     try {
-      // שאילתה לכל הפריטים
-      const q = query(
-        collection(db, 'items'), 
-        orderBy('purchaseCount', 'desc')
-      );
+      console.log('מתחיל טעינת היסטוריה...');
       
-      const querySnapshot = await getDocs(q);
+      // יצירת שדות שליפה מפורטים כדי לוודא שכל השדות הנדרשים מגיעים
+      const selectFields = ['name', 'status', 'imageUrl', 'purchaseCount', 'lastPurchaseDate', 'lastPartialPurchaseDate', 'householdId', 'addedBy'];
       
-      // סינון רק פריטים שנקנו ויש להם היסטוריית רכישות
+      // טעינת היסטוריה ישירות מהפיירסטור בשאילתה מקיפה
+      let historyQuery;
+      
+      if (household) {
+        console.log(`מחפש מוצרים במצב "purchased" במשק בית ${household.id}`);
+        
+        // שאילתה לכל הפריטים ששייכים למשק הבית במצב purchased
+        historyQuery = query(
+          collection(db, 'items'),
+          where('householdId', '==', household.id),
+          where('status', '==', 'purchased')
+        );
+      } else {
+        console.log(`מחפש מוצרים אישיים במצב "purchased" של משתמש ${user.uid}`);
+        
+        // שאילתה לפריטים אישיים של המשתמש במצב purchased
+        historyQuery = query(
+          collection(db, 'items'),
+          where('addedBy', '==', user.uid),
+          where('householdId', '==', null),
+          where('status', '==', 'purchased')
+        );
+      }
+      
+      // ביצוע השאילתה
+      console.log('ביצוע שאילתת היסטוריה...');
+      const querySnapshot = await getDocs(historyQuery);
+      console.log(`נמצאו ${querySnapshot.size} פריטים בהיסטוריה`);
+      
+      // עיבוד התוצאות
       const historyData: {
         name: string;
         imageUrl?: string;
@@ -133,36 +162,63 @@ export default function ShoppingList() {
       }[] = [];
       const frequentNames: string[] = [];
       
+      // לוג מפורט של כל פריט
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         
-        // מוסיפים להיסטוריה רק מוצרים שנקנו בעבר ונמצאים במצב purchased
-        if (data.purchaseCount && data.purchaseCount > 0 && data.status === 'purchased') {
-          historyData.push({
-            name: data.name,
-            imageUrl: data.imageUrl || undefined,
-            purchaseCount: data.purchaseCount,
-              lastPurchaseDate: data.lastPurchaseDate?.toDate(),
-              lastPartialPurchaseDate: data.lastPartialPurchaseDate?.toDate()
-            });
-          
-          if (!frequentNames.includes(data.name)) {
-            frequentNames.push(data.name);
-          }
+        // בדיקת תקינות של כל השדות
+        console.log(`נמצא פריט בהיסטוריה: ${data.name || 'ללא שם'}`);
+        console.log(`  ID: ${doc.id}`);
+        console.log(`  סטטוס: ${data.status || 'לא מוגדר'}`);
+        console.log(`  תמונה: ${data.imageUrl ? 'יש' : 'אין'}`);
+        console.log(`  נקנה: ${data.purchaseCount || 0} פעמים`);
+        console.log(`  משק בית: ${data.householdId || 'אישי'}`);
+        console.log(`  משתמש: ${data.addedBy}`);
+        console.log(`  תאריך רכישה אחרון: ${data.lastPurchaseDate ? data.lastPurchaseDate.toDate().toLocaleDateString('he-IL') : 'לא קיים'}`);
+        
+        // מוסיף את הפריט להיסטוריה גם אם אין purchaseCount
+        historyData.push({
+          name: data.name,
+          imageUrl: data.imageUrl || undefined,
+          purchaseCount: data.purchaseCount || 0,
+          lastPurchaseDate: data.lastPurchaseDate?.toDate(),
+          lastPartialPurchaseDate: data.lastPartialPurchaseDate?.toDate()
+        });
+        
+        if (!frequentNames.includes(data.name)) {
+          frequentNames.push(data.name);
         }
       });
-
-      // מיון התוצאות
-      historyData.sort((a, b) => b.purchaseCount - a.purchaseCount);
       
+      // מיון התוצאות לפי תדירות רכישה (גם אם 0)
+      historyData.sort((a, b) => (b.purchaseCount || 0) - (a.purchaseCount || 0));
+      
+      console.log(`נטענו ${historyData.length} פריטים להיסטוריה:`, 
+        historyData.map(item => `${item.name} (${item.purchaseCount || 0})`).join(', '));
+      
+      // עדכון הסטייט
       setHistoryItems(historyData);
       setFrequentItems(frequentNames);
       
-      console.log('נטענה היסטוריה:', historyData.length, 'פריטים');
     } catch (error) {
       console.error('שגיאה בטעינת היסטוריה:', error);
     }
-  };
+  }, [user, household]);
+
+  // טעינת ההיסטוריה באופן אוטומטי בכל שינוי של משק הבית
+  useEffect(() => {
+    if (user) {
+      loadHistory();
+    }
+  }, [user, household, loadHistory]);
+  
+  // טעינת ההיסטוריה כאשר פותחים את המודל
+  useEffect(() => {
+    if (isHistoryModalOpen && user) {
+      console.log('מודל היסטוריה נפתח - טעינת היסטוריה מחדש');
+      loadHistory();
+    }
+  }, [isHistoryModalOpen, user, loadHistory]);
 
   // הוספת פריט חדש לרשימת הקניות
   const handleAddItem = async (
@@ -176,128 +232,105 @@ export default function ShoppingList() {
     if (!user || !itemName.trim()) return;
     
     try {
-      // חיפוש המוצר בכל ה-DB
-      const q = query(
-        collection(db, 'items'),
-        where('name', '==', itemName.trim())
-      );
+      // חיפוש המוצר בדאטאבייס לפי שם ושייכות למשתמש או למשק בית
+      let itemQuery;
       
-      const querySnapshot = await getDocs(q);
+      if (household) {
+        // נחפש רק מוצרים במשק הבית הנוכחי
+        itemQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName.trim()),
+          where('householdId', '==', household.id)
+        );
+      } else {
+        // נחפש רק מוצרים אישיים של המשתמש
+        itemQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName.trim()),
+          where('addedBy', '==', user.uid),
+          where('householdId', '==', null)
+        );
+      }
+      
+      const querySnapshot = await getDocs(itemQuery);
       const existingItems = querySnapshot.docs.map(doc => ({
         id: doc.id,
         name: doc.data().name,
         status: doc.data().status,
-        quantity: doc.data().quantity,
-        imageUrl: doc.data().imageUrl,
-        purchaseCount: doc.data().purchaseCount,
-        lastPurchaseDate: doc.data().lastPurchaseDate,
-        addedBy: doc.data().addedBy,
         householdId: doc.data().householdId
       }));
-
-      // מוצאים את המוצר הקיים (אם יש)
-      const existingItem = existingItems.find(item => 
-        item.name.toLowerCase() === itemName.toLowerCase()
-      );
-
-      if (existingItem) {
-        console.log('נמצא מוצר קיים:', existingItem.id);
+      
+      console.log('נמצאו פריטים קיימים:', existingItems.length);
+      
+      // חיפוש מוצר פעיל (במצב שאינו purchased)
+      const activeItem = existingItems.find(item => 
+        item.status !== 'purchased');
+      
+      if (activeItem) {
+        // עדכון המוצר הקיים
+        console.log('נמצא מוצר פעיל:', activeItem.id);
         
-        let imageUrl = existingImageUrl;
-        
-        // אם נבחרה תמונה חדשה, מעלים אותה ומוחקים את הישנה
-        if (image) {
-          console.log('מעלה תמונה חדשה למוצר קיים...');
-          
-          // מחיקת התמונה הישנה אם קיימת
-          if (existingItem.imageUrl) {
-            try {
-              console.log('מוחק תמונה ישנה:', existingItem.imageUrl);
-              await storageService.deleteImage(existingItem.imageUrl);
-              console.log('תמונה ישנה נמחקה בהצלחה');
-            } catch (error) {
-              console.error('שגיאה במחיקת תמונה ישנה:', error);
-            }
-          }
-
-          // העלאת התמונה החדשה
-          imageUrl = await storageService.uploadImage(user.uid, image, 'items');
-          console.log('תמונה חדשה הועלתה בהצלחה:', imageUrl);
-        }
-
-        // מעדכנים את המוצר הקיים
-        await shoppingListService.updateItem(existingItem.id, { 
+        await shoppingListService.updateItem(activeItem.id, {
           status: 'pending',
-          quantity: quantity,
-          imageUrl: imageUrl || existingItem.imageUrl // משתמשים בתמונה החדשה או משאירים את הקיימת
+          quantity: quantity
         });
         
-        // עדכון לוקאלי
+        // עדכון לוקאלי של הרשימה
         setItems(prev => {
-          const itemExists = prev.some(item => item.id === existingItem.id);
+          const exists = prev.some(item => item.id === activeItem.id);
           
-          if (itemExists) {
+          if (exists) {
             return prev.map(item => 
-              item.id === existingItem.id 
-                ? { ...item, status: 'pending', quantity, imageUrl: imageUrl || item.imageUrl } 
+              item.id === activeItem.id 
+                ? { ...item, status: 'pending', quantity } 
                 : item
             );
-    } else {
+          } else {
+            // אם המוצר לא נמצא ברשימה המקומית, נוסיף אותו
             return [...prev, {
-              id: existingItem.id,
-              name: itemName,
-              status: 'pending',
+              id: activeItem.id,
+              name: itemName.trim(),
               quantity,
-              imageUrl: imageUrl || existingItem.imageUrl,
-              purchaseCount: existingItem.purchaseCount || 0,
-              lastPurchaseDate: existingItem.lastPurchaseDate?.toDate(),
-              addedBy: existingItem.addedBy,
-              householdId: existingItem.householdId
+              status: 'pending',
+              imageUrl: existingImageUrl || null,
+              householdId: household ? household.id : null,
+              addedBy: user.uid
             } as Item];
           }
         });
+      } else {
+        // אם המוצר כבר קיים אך במצב purchased, או לא קיים בכלל - נוסיף אותו כמוצר חדש
+        // נשתמש בשירות להוספת מוצרים
         
-        console.log('מוצר קיים עודכן בהצלחה');
-        
-        // מעדכנים את ההיסטוריה
-        await loadHistory();
-        
-        return existingItem.id;
-      }
-      
-      // אם המוצר לא קיים בכלל, יוצרים אותו
-      let imageUrl = existingImageUrl || undefined;
-      
-      if (image) {
-        console.log('מעלה תמונה למוצר חדש...');
-        imageUrl = await storageService.uploadImage(user.uid, image, 'items');
-        console.log('תמונה הועלתה בהצלחה:', imageUrl);
-      }
-      
-      // קבלת משק הבית של המשתמש
-      const userHousehold = await householdService.getUserHousehold(user.uid);
-      console.log('משק בית של המשתמש:', userHousehold);
-      
-      // מוסיף את הפריט למסד הנתונים
-      const itemId = await shoppingListService.addItem(
-        userHousehold?.id || null,
-        user.uid,
-        {
-          name: itemName,
-          quantity,
-          imageUrl,
-          purchaseCount: 0
+        let imageUrl = existingImageUrl;
+        if (image) {
+          // העלאת התמונה אם יש
+          imageUrl = await storageService.uploadImage(user.uid, image, 'items');
         }
-      );
-      console.log('פריט חדש נוסף בהצלחה עם מזהה:', itemId);
-      
-      // טוען מחדש את הפריטים
-      loadUserData();
-      
-      return itemId;
+        
+        const newItemData = {
+          name: itemName.trim(),
+          status: 'pending' as 'pending',
+          quantity: quantity,
+          addedBy: user.uid,
+          householdId: household ? household.id : null,
+          imageUrl: imageUrl || null
+        };
+        
+        const itemId = await shoppingListService.addItem(newItemData);
+        
+        // עדכון לוקאלי של הרשימה
+        setItems(prev => [...prev, { 
+          ...newItemData, 
+          id: itemId,
+          purchaseCount: 0
+        } as Item]);
+        
+        console.log('נוסף מוצר חדש:', itemId);
+      }
     } catch (error) {
       console.error('שגיאה בהוספת פריט:', error);
-      throw error;
+      alert('שגיאה בהוספת פריט. אנא נסה שוב.');
     }
   };
 
@@ -394,20 +427,40 @@ export default function ShoppingList() {
     if (!user) return;
     
     try {
-      // חיפוש המוצר בדאטאבייס
-      const q = query(
-        collection(db, 'items'),
-        where('name', '==', itemName)
-      );
+      // חיפוש המוצר בדאטאבייס - חשוב: נחפש רק מוצרים ששייכים למשתמש או למשק הבית שלו
+      let householdQuery;
       
-      const querySnapshot = await getDocs(q);
+      if (household) {
+        // חיפוש בתוך מוצרי משק הבית
+        householdQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName),
+          where('householdId', '==', household.id)
+        );
+      } else {
+        // חיפוש רק במוצרים האישיים של המשתמש
+        householdQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName),
+          where('addedBy', '==', user.uid),
+          where('householdId', '==', null)
+        );
+      }
+      
+      const querySnapshot = await getDocs(householdQuery);
+      
+      console.log(`חיפוש מוצר "${itemName}" מההיסטוריה:`, 
+        querySnapshot.size, 'תוצאות',
+        household ? `במשק בית ${household.id}` : 'אישי');
       
       if (!querySnapshot.empty) {
-        // מצאנו את המוצר - נעדכן את הסטטוס שלו ל-PENDING
+        // מצאנו את המוצר ששייך למשתמש או למשק הבית - נעדכן את הסטטוס שלו ל-PENDING
         const doc = querySnapshot.docs[0]; // לוקחים את הראשון במקרה שיש כמה
         const existingItem = doc.data();
         
-        console.log('נמצא מוצר קיים בהיסטוריה:', doc.id);
+        console.log('נמצא מוצר קיים בהיסטוריה שלנו:', doc.id, 
+          'שייך למשק בית:', existingItem.householdId || 'אישי',
+          'נוסף על ידי:', existingItem.addedBy);
         
         // עדכון הפריט
         await shoppingListService.updateItem(doc.id, {
@@ -425,9 +478,9 @@ export default function ShoppingList() {
             return prev.map(item =>
               item.id === doc.id
                 ? { ...item, status: 'pending', quantity }
-            : item
+                : item
             );
-      } else {
+          } else {
             // אם לא קיים, מוסיפים אותו לרשימה
             return [...prev, {
               id: doc.id,
@@ -445,12 +498,12 @@ export default function ShoppingList() {
         
         console.log('מוצר הועבר למצב pending:', itemName);
       } else {
-        // אם המוצר לא נמצא (מקרה נדיר), ניצור אותו מחדש
-        console.log('לא נמצא מוצר בהיסטוריה, יוצר חדש:', itemName);
+        // המוצר לא נמצא במשק הבית או ברשימה האישית - ניצור פריט חדש
+        console.log('יוצר מוצר חדש עבור משתמש/משק בית:', itemName);
         await handleAddItem(itemName, quantity, undefined, imageUrl);
       }
       
-      // טעינה מחדש של ההיסטוריה כדי להסיר את המוצר מהרשימה
+      // טעינה מחדש של ההיסטוריה כדי לעדכן את הרשימה
       await loadHistory();
       
       setIsHistoryModalOpen(false);
@@ -464,13 +517,29 @@ export default function ShoppingList() {
     if (!user) return;
     
     try {
-      // קבלת כל הפריטים עם השם הזה
-      const q = query(
-        collection(db, 'items'),
-        where('name', '==', itemName)
-      );
+      // קבלת כל הפריטים עם השם הזה, בהתאם למשק הבית או למשתמש
+      let historyQuery;
       
-      const querySnapshot = await getDocs(q);
+      if (household) {
+        // חיפוש בפריטים של משק הבית
+        historyQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName),
+          where('householdId', '==', household.id),
+          where('status', '==', 'purchased')
+        );
+      } else {
+        // חיפוש בפריטים אישיים של המשתמש
+        historyQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName),
+          where('addedBy', '==', user.uid),
+          where('householdId', '==', null),
+          where('status', '==', 'purchased')
+        );
+      }
+      
+      const querySnapshot = await getDocs(historyQuery);
       
       // עדכון כל פריט כדי לאפס את מונה הרכישות
       for (const doc of querySnapshot.docs) {
@@ -552,39 +621,69 @@ export default function ShoppingList() {
 
   // טיפול בפריטים שנקנו במלואם
   const handleProcessInCartItems = async (itemsInCart: Item[]) => {
-    for (const item of itemsInCart) {
-      try {
-        const itemRef = doc(db, 'items', item.id);
-        
-        // עדכון סטטוס הפריט ל-purchased ועדכון מונה רכישות
-        await updateDoc(itemRef, {
-          status: 'purchased',
-          purchaseCount: (item.purchaseCount || 0) + 1,
-          lastPurchaseDate: Timestamp.now(),
-          updatedAt: serverTimestamp()
-        });
-        
-        console.log(`פריט ${item.name} סומן כנרכש`);
-      } catch (error) {
-        console.error(`שגיאה בטיפול בפריט ${item.name}:`, error);
+    try {
+      console.log(`מעבד ${itemsInCart.length} פריטים שנקנו במלואם ועובר למצב 'purchased'`);
+      
+      for (const item of itemsInCart) {
+        try {
+          const itemRef = doc(db, 'items', item.id);
+          
+          // הזהירות: לא נשנה את householdId אם כבר יש לפריט
+          const itemDoc = await getDoc(itemRef);
+          const existingHouseholdId = itemDoc.exists() ? itemDoc.data().householdId : null;
+          const finalHouseholdId = existingHouseholdId !== undefined ? existingHouseholdId : (household ? household.id : null);
+          
+          // עדכון סטטוס הפריט ל-purchased ועדכון מונה רכישות
+          await updateDoc(itemRef, {
+            status: 'purchased',
+            purchaseCount: (item.purchaseCount || 0) + 1,
+            lastPurchaseDate: Timestamp.now(),
+            updatedAt: serverTimestamp(),
+            householdId: finalHouseholdId
+          });
+          
+          console.log(`פריט ${item.name} סומן כנרכש (purchased), householdId: ${finalHouseholdId}`);
+        } catch (error) {
+          console.error(`שגיאה בטיפול בפריט ${item.name}:`, error);
+        }
       }
-    }
-    
-    // עדכון ברשימה המקומית - לשנות את כל הפריטים שהיו ב-inCart ל-purchased
+      
+      // עדכון ברשימה המקומית - לשנות את כל הפריטים שהיו ב-inCart ל-purchased
       setItems(prev =>
         prev.map(item =>
         item.status === 'inCart' ? { 
           ...item, 
           status: 'purchased', 
           purchaseCount: (item.purchaseCount || 0) + 1,
-          lastPurchaseDate: new Date()
+          lastPurchaseDate: new Date(),
+          // שמירת householdId הקיים של הפריט אם יש כזה
+          householdId: item.householdId !== undefined ? item.householdId : (household ? household.id : null)
         } : item
       )
     );
-    
-    // טעינה מחדש של ההיסטוריה והרשימה
-    await loadHistory();
-    await loadUserData();
+      
+      // טעינה מחדש של ההיסטוריה באופן מפורש ומיידי
+      console.log('טוען היסטוריה מיד לאחר עדכון פריטים ל-purchased');
+      await loadHistory();
+      
+      // טעינה חוזרת של היסטוריה בהדרגה - לפעמים פיירבייס לא מחזיר את הנתונים המעודכנים מיד
+      const delayTimes = [100, 500, 1000, 3000];
+      
+      for (const delay of delayTimes) {
+        setTimeout(async () => {
+          console.log(`טוען היסטוריה שוב לאחר ${delay}ms`);
+          await loadHistory();
+        }, delay);
+      }
+      
+      // מחכים גם לטעינה מחדש של הנתונים הרגילים
+      setTimeout(async () => {
+        await loadUserData();
+      }, 500);
+      
+    } catch (error) {
+      console.error('שגיאה בעיבוד פריטים שנרכשו:', error);
+    }
   };
 
   // איפוס פריטים חסרים

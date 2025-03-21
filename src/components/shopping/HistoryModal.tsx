@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from 'react-modal';
 import { X, ZoomIn, Plus, Minus } from 'lucide-react';
 
@@ -29,13 +29,45 @@ export function HistoryModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [quantities, setQuantities] = useState<{[itemName: string]: number}>({});
 
+  // לוג נתוני היסטוריה כשהמודל נפתח
+  useEffect(() => {
+    if (isOpen) {
+      console.log('===== מודל היסטוריה =====');
+      console.log(`נפתח מודל היסטוריה עם ${historyItemsData.length} פריטים`);
+      
+      if (historyItemsData.length > 0) {
+        console.log('פריטים בהיסטוריה:');
+        historyItemsData.forEach((item, index) => {
+          console.log(`${index + 1}. ${item.name} - נקנה ${item.purchaseCount || 0} פעמים, תאריך אחרון: ${item.lastPurchaseDate ? formatLogDate(item.lastPurchaseDate) : 'לא ידוע'}`);
+        });
+      } else {
+        console.log('אין פריטים בהיסטוריה');
+      }
+      console.log('========================');
+    }
+  }, [isOpen, historyItemsData]);
+
+  // פורמט תאריך ללוגים - יותר פשוט
+  const formatLogDate = (date?: Date) => {
+    if (!date) return 'לא ידוע';
+    return date.toLocaleDateString('he-IL');
+  };
+
+  // פורמט תאריך לתצוגה - מפורט יותר
   const formatDate = (date?: Date) => {
     if (!date) return 'לא ידוע';
-    return new Intl.DateTimeFormat('he-IL', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    }).format(date);
+    
+    try {
+      return new Intl.DateTimeFormat('he-IL', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }).format(date);
+    } catch (error) {
+      console.error('שגיאה בפורמט תאריך:', error, date);
+      // החזרת פורמט פשוט יותר במקרה של שגיאה
+      return date.toLocaleDateString('he-IL');
+    }
   };
 
   const filteredItems = historyItemsData.filter(item =>
@@ -56,6 +88,7 @@ export function HistoryModal({
 
   // הוספת פריט עם הכמות הנבחרת
   const handleAddItem = (itemName: string, imageUrl?: string) => {
+    console.log(`מוסיף פריט מההיסטוריה: ${itemName}, כמות: ${getQuantity(itemName)}`);
     onItemSelect(itemName, getQuantity(itemName), imageUrl);
   };
 

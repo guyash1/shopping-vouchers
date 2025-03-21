@@ -91,32 +91,49 @@ export const shoppingListService = {
   },
 
   // הוספת פריט חדש
-  async addItem(householdId: string | null, userId: string, item: { 
-    name: string; 
-    quantity: number; 
-    imageUrl?: string;
+  async addItem(itemData: {
+    name: string;
+    status?: Item['status'];
+    quantity: number;
+    addedBy: string;
+    householdId: string | null;
+    imageUrl?: string | null;
     purchaseCount?: number;
   }): Promise<string> {
     try {
-      if (!userId) throw new Error('User ID is required');
-      if (!item.name) throw new Error('Item name is required');
+      if (!itemData.name || !itemData.addedBy) {
+        throw new Error('Item name and user ID are required');
+      }
       
       // סניטיזציה של קלט המשתמש
-      const sanitizedName = sanitizeInput(item.name);
+      const sanitizedName = sanitizeInput(itemData.name);
       
-      const docRef = await addDoc(collection(db, 'items'), {
-        householdId,
-        addedBy: userId,
+      // בדיקת הרשאה למשק בית אם יש
+      if (itemData.householdId) {
+        const isMember = await isUserInHousehold(itemData.addedBy, itemData.householdId);
+        if (!isMember) {
+          throw new Error('User is not a member of this household');
+        }
+      }
+      
+      // הכנת אובייקט המוצר
+      const item = {
         name: sanitizedName,
-        quantity: Number(item.quantity) || 1,
-        status: 'pending',
-        imageUrl: item.imageUrl || null,
-        purchaseCount: item.purchaseCount || 0,
-        createdAt: serverTimestamp()
-      });
+        quantity: itemData.quantity || 1,
+        status: itemData.status || 'pending',
+        imageUrl: itemData.imageUrl || null,
+        purchaseCount: itemData.purchaseCount || 0,
+        addedBy: itemData.addedBy,
+        householdId: itemData.householdId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
       
+      // הוספת המוצר למסד הנתונים
+      const docRef = await addDoc(collection(db, 'items'), item);
       return docRef.id;
     } catch (error) {
+      console.error('שגיאה בהוספת פריט:', error);
       throw error;
     }
   },
