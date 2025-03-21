@@ -1,8 +1,7 @@
 [
   {
-    "origin": ["https://shopping-vouchers.web.app", "https://shopping-vouchers.firebaseapp.com"],
-    "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
-    "maxAgeSeconds": 3600,
-    "responseHeader": ["Content-Type", "Authorization", "Content-Length"]
+    "origin": ["https://subtle-froyo-666af2.netlify.app"],
+    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "maxAgeSeconds": 3600
   }
-] 
+]
