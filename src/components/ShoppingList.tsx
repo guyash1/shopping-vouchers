@@ -37,6 +37,7 @@ export default function ShoppingList() {
   const [partialItems, setPartialItems] = useState<Item[]>([]);
   const [isHouseholdModalOpen, setIsHouseholdModalOpen] = useState(false);
   const [household, setHousehold] = useState<any>(null);
+  const [isShoppingActive, setIsShoppingActive] = useState(false);
 
   // טעינת נתוני המשתמש ופריטים
   const loadUserData = useCallback(async () => {
@@ -112,6 +113,17 @@ export default function ShoppingList() {
       loadUserData();
     }
   }, [user, loadUserData]);
+
+  // הפעלת מצב קניות אוטומטי כאשר יש מוצר בעגלה
+  useEffect(() => {
+    // בודק אם יש לפחות מוצר אחד בעגלה
+    const hasItemInCart = items.some(item => item.status === 'inCart');
+    
+    // אם יש פריט בעגלה, מפעיל את מצב הקניות אוטומטית
+    if (hasItemInCart && !isShoppingActive) {
+      setIsShoppingActive(true);
+    }
+  }, [items, isShoppingActive]);
 
   // טעינת היסטוריית רכישות
   const loadHistory = useCallback(async () => {
@@ -578,42 +590,140 @@ export default function ShoppingList() {
     }
   };
 
-  // סיום קניות
-  const handleFinishShopping = async () => {
-    if (!user) return;
+  // חישוב סטטיסטיקות קניות
+  const getShoppingStats = () => {
+    // פריטים פעילים הם אלה שלא במצב purchased
+    const activeItems = items.filter(item => item.status !== 'purchased');
+    const totalItems = activeItems.length;
     
-    try {
-      const itemsInCart = items.filter(item => item.status === 'inCart');
-      const partialItems = items.filter(item => item.status === 'partial');
-      const missingItems = items.filter(item => item.status === 'missing');
-      
-      if (itemsInCart.length === 0 && partialItems.length === 0) {
-        alert('אין פריטים ברשימת הקניות שהושלמו');
-        return;
+    const itemsInCart = activeItems.filter(item => item.status === 'inCart').length;
+    const itemsMissing = activeItems.filter(item => item.status === 'missing').length;
+    const itemsPartial = activeItems.filter(item => item.status === 'partial').length;
+    const itemsPending = activeItems.filter(item => item.status === 'pending').length;
+    
+    // כמות פריטים שנקנו - נשמור לסטטיסטיקות אבל לא נציג ברשימה הפעילה
+    const itemsPurchased = items.filter(item => item.status === 'purchased').length;
+    
+    return {
+      totalItems,
+      itemsInCart,
+      itemsMissing,
+      itemsPartial,
+      itemsPending,
+      itemsPurchased,
+      progress: totalItems > 0 ? ((itemsInCart + itemsMissing + itemsPartial) / totalItems) * 100 : 0
+    };
+  };
+
+  const stats = getShoppingStats();
+
+  // חישוב נתונים לגרף פס
+  const getBarChartData = () => {
+    const segments = [
+      { 
+        value: stats.itemsInCart, 
+        color: '#10B981', // ירוק
+        label: 'בעגלה',
+        percentage: stats.totalItems > 0 ? (stats.itemsInCart / stats.totalItems) * 100 : 0 
+      },
+      { 
+        value: stats.itemsPartial, 
+        color: '#F59E0B', // צהוב
+        label: 'חלקי',
+        percentage: stats.totalItems > 0 ? (stats.itemsPartial / stats.totalItems) * 100 : 0 
+      },
+      { 
+        value: stats.itemsMissing, 
+        color: '#EF4444', // אדום
+        label: 'חסר',
+        percentage: stats.totalItems > 0 ? (stats.itemsMissing / stats.totalItems) * 100 : 0 
+      },
+      { 
+        value: stats.itemsPending, 
+        color: '#6B7280', // אפור
+        label: 'בהמתנה',
+        percentage: stats.totalItems > 0 ? (stats.itemsPending / stats.totalItems) * 100 : 0 
       }
+    ];
+
+    // מחזיר רק את מקטעי הגרף שיש בהם ערך
+    return segments.filter(segment => segment.value > 0);
+  };
+
+  const barChartData = getBarChartData();
+
+  // מיון פריטים לפי סטטוס
+  const sortedItems = [...items].filter(item => item.status !== 'purchased').sort((a, b) => {
+    if (isShoppingActive) {
+      // כאשר הקניות פעילות, סדר שונה - פריטים בהמתנה מוצגים ראשונים
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+    } else {
+      // סדר רגיל - מיון לפי סטטוס
+      // פריטים בהמתנה בהתחלה
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
       
-      // טיפול בפריטים שנקנו במלואם
+      // אחר כך פריטים חלקיים
+      if (a.status === 'partial' && b.status !== 'partial') return -1;
+      if (a.status !== 'partial' && b.status === 'partial') return 1;
+      
+      // אחר כך פריטים חסרים
+      if (a.status === 'missing' && b.status !== 'missing') return -1;
+      if (a.status !== 'missing' && b.status === 'missing') return 1;
+      
+      // אחר כך פריטים בעגלה
+      if (a.status === 'inCart' && b.status !== 'inCart') return -1;
+      if (a.status !== 'inCart' && b.status === 'inCart') return 1;
+    }
+    
+    return 0;
+  });
+  
+  // התצוגה הראשית מציגה רק פריטים שלא purchased
+  const displayItems = sortedItems;
+
+  // כאשר לוחצים על כפתור סיום קניות, מבטלים את מצב הקניות
+  const handleFinishShopping = async () => {
+    // השארת הלוגיקה הקיימת
+    try {
+      setLoading(true);
+      
+      // מחלקים את הפריטים לפי סטטוס
+      const itemsInCart = items.filter(item => item.status === 'inCart');
+      const missingItems = items.filter(item => item.status === 'missing');
+      const partialItems = items.filter(item => item.status === 'partial');
+      
+      // מטפלים בפריטים שנמצאים בעגלה - מעבירים אותם לסטטוס purchased
       if (itemsInCart.length > 0) {
         await handleProcessInCartItems(itemsInCart);
       }
       
-      // איפוס פריטים שחסרים
+      // מטפלים בפריטים חסרים - מחזירים אותם למצב pending אם יש
       if (missingItems.length > 0) {
         await handleResetMissingItems(missingItems);
       }
       
-      // עדכון פריטים חלקיים
+      // אם יש פריטים חלקיים, פותחים מודל לעדכון כמויות
       if (partialItems.length > 0) {
-        setIsPartialItemModalOpen(true);
         setPartialItems(partialItems);
-      } else {
-        // אם אין פריטים חלקיים, נטען מחדש את הרשימה
-        await loadUserData();
+        setIsPartialItemModalOpen(true);
       }
       
+      console.log('סיום קניות הושלם בהצלחה!');
+      
+      // מבטלים מצב קניות פעיל
+      setIsShoppingActive(false);
     } catch (error) {
       console.error('שגיאה בסיום קניות:', error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // פונקציה חדשה להפעלת/ביטול מצב הקניות
+  const toggleShoppingMode = () => {
+    setIsShoppingActive(!isShoppingActive);
   };
 
   // טיפול בפריטים שנקנו במלואם
@@ -738,57 +848,6 @@ export default function ShoppingList() {
     await loadHistory();
   };
 
-  // חישוב סטטיסטיקות קניות
-  const getShoppingStats = () => {
-    // פריטים פעילים הם אלה שלא במצב purchased
-    const activeItems = items.filter(item => item.status !== 'purchased');
-    const totalItems = activeItems.length;
-    
-    const itemsInCart = activeItems.filter(item => item.status === 'inCart').length;
-    const itemsMissing = activeItems.filter(item => item.status === 'missing').length;
-    const itemsPartial = activeItems.filter(item => item.status === 'partial').length;
-    const itemsPending = activeItems.filter(item => item.status === 'pending').length;
-    
-    // כמות פריטים שנקנו - נשמור לסטטיסטיקות אבל לא נציג ברשימה הפעילה
-    const itemsPurchased = items.filter(item => item.status === 'purchased').length;
-    
-    return {
-      totalItems,
-      itemsInCart,
-      itemsMissing,
-      itemsPartial,
-      itemsPending,
-      itemsPurchased,
-      progress: totalItems > 0 ? ((itemsInCart + itemsMissing + itemsPartial) / totalItems) * 100 : 0
-    };
-  };
-
-  const stats = getShoppingStats();
-
-  // מיון פריטים לפי סטטוס
-  const sortedItems = [...items].filter(item => item.status !== 'purchased').sort((a, b) => {
-    // פריטים בהמתנה בהתחלה
-    if (a.status === 'pending' && b.status !== 'pending') return -1;
-    if (a.status !== 'pending' && b.status === 'pending') return 1;
-    
-    // אחר כך פריטים חלקיים
-    if (a.status === 'partial' && b.status !== 'partial') return -1;
-    if (a.status !== 'partial' && b.status === 'partial') return 1;
-    
-    // אחר כך פריטים חסרים
-    if (a.status === 'missing' && b.status !== 'missing') return -1;
-    if (a.status !== 'missing' && b.status === 'missing') return 1;
-    
-    // אחר כך פריטים בעגלה
-    if (a.status === 'inCart' && b.status !== 'inCart') return -1;
-    if (a.status !== 'inCart' && b.status === 'inCart') return 1;
-    
-    return 0;
-  });
-  
-  // התצוגה הראשית מציגה רק פריטים שלא purchased
-  const displayItems = sortedItems;
-
   return (
     <div className="max-w-md mx-auto p-4 pb-24">
       {/* כותרת ראשית וכפתורי פעולה */}
@@ -827,26 +886,78 @@ export default function ShoppingList() {
         activeItems={items.filter(item => item.status === 'pending' || item.status === 'missing')}
       />
 
-      {/* סטטיסטיקות */}
-      {displayItems.length > 0 && (
+      {/* כפתור הפעלת מצב קניות - מוצג רק אם יש פריטים ואין אף פריט בעגלה */}
+      {displayItems.length > 0 && !items.some(item => item.status === 'inCart') && (
+        <div className="mb-4">
+          <button
+            onClick={toggleShoppingMode}
+            className={`w-full py-2 px-4 rounded-md text-white font-medium shadow transition-colors ${
+              isShoppingActive ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-blue-500 hover:bg-blue-600'
+            }`}
+          >
+            {isShoppingActive ? 'סגור מצב קניות' : 'התחל קניות'}
+          </button>
+        </div>
+      )}
+
+      {/* סטטיסטיקות - מוצגות רק במצב קניות פעיל */}
+      {isShoppingActive && displayItems.length > 0 && (
         <div className="bg-white rounded-lg shadow p-4 mb-4">
           <div className="flex justify-between mb-2">
             <span className="text-sm text-gray-600">התקדמות קניות:</span>
             <span className="text-sm font-medium">{Math.round(stats.progress)}%</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <div 
-              className="bg-blue-600 h-2.5 rounded-full" 
-              style={{ width: `${stats.progress}%` }}
-            ></div>
-                      </div>
-          <div className="mt-2 flex flex-wrap text-xs text-gray-500 justify-between">
-            <span>{stats.itemsPending} בהמתנה</span>
-            <span>{stats.itemsInCart} בעגלה</span>
-            <span>{stats.itemsPartial} חלקי</span>
-            <span>{stats.itemsMissing} חסר</span>
-                </div>
+
+          {/* גרף פס אופקי */}
+          {stats.totalItems > 0 && (
+            <div className="mb-4">
+              <div className="h-3 w-full bg-gray-200 rounded-md overflow-hidden flex">
+                {barChartData.map((segment, index) => (
+                  <div 
+                    key={index} 
+                    className="h-full" 
+                    style={{ 
+                      width: `${segment.percentage}%`, 
+                      backgroundColor: segment.color 
+                    }}
+                    title={`${segment.label}: ${segment.value}`}
+                  ></div>
+                ))}
+              </div>
+              
+              <div className="flex flex-wrap justify-between text-xs text-gray-500 mt-2">
+                {barChartData.map((segment, index) => (
+                  <div key={index} className="flex items-center gap-1 mt-1">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: segment.color }}></div>
+                    <span>
+                      {segment.label}: {segment.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
+          )}
+
+          {/* מידע מספרי */}
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold text-gray-800">{stats.itemsPending}</span>
+              <span className="text-xs text-gray-500">בהמתנה</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold text-green-600">{stats.itemsInCart}</span>
+              <span className="text-xs text-gray-500">בעגלה</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold text-yellow-500">{stats.itemsPartial}</span>
+              <span className="text-xs text-gray-500">חלקי</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold text-red-500">{stats.itemsMissing}</span>
+              <span className="text-xs text-gray-500">חסר</span>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* רשימת הפריטים */}
@@ -856,10 +967,10 @@ export default function ShoppingList() {
           <p className="text-gray-600">טוען פריטים...</p>
         </div>
       ) : displayItems.length > 0 ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {sortedItems.map(item => (
             <ShoppingItem
-                key={item.id}
+              key={item.id}
               item={item}
               onDelete={handleDeleteItem}
               onEditQuantity={handleEditQuantity}
@@ -868,26 +979,28 @@ export default function ShoppingList() {
             />
           ))}
 
-          {/* כפתור סיום קניות */}
-          <div className="mt-4">
-                      <button
-              onClick={handleFinishShopping}
-              className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                      >
-              סיום קניות
-                      </button>
-                    </div>
-                </div>
+          {/* כפתור סיום קניות - מוצג רק כשיש פריטים בעגלה */}
+          {items.some(item => item.status === 'inCart') && (
+            <div className="mt-6">
+              <button
+                onClick={handleFinishShopping}
+                className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 font-semibold"
+              >
+                סיום קניות
+              </button>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <div className="flex justify-center mb-4">
             <ShoppingCart className="w-12 h-12 text-gray-400" />
-                </div>
+          </div>
           <h3 className="text-lg font-medium text-gray-900 mb-1">הרשימה ריקה</h3>
           <p className="text-gray-500">
             הוסף פריטים לרשימת הקניות שלך
           </p>
-              </div>
+        </div>
       )}
 
       {/* מודלים */}

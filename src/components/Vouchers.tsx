@@ -198,29 +198,32 @@ export default function Vouchers() {
                 if (userHousehold) {
                     householdVouchers = await vouchersService.getHouseholdVouchers(userHousehold.id, sortOrder);
                 }
-            
-                // יצירת מפתח ייחודי לכל שובר כדי למנוע כפילויות
-                const uniqueVouchers = new Map<string, Voucher>();
                 
-                // הוספת השוברים האישיים למפה
+                // ניצור מפתח של השוברים הקיימים לפי ID כדי לזהות כפילויות
+                const vouchersMap = new Map<string, Voucher>();
+                
+                // תחילה נוסיף את כל השוברים האישיים
                 personalVouchers.forEach(voucher => {
-                    uniqueVouchers.set(voucher.id, voucher);
+                    vouchersMap.set(voucher.id, voucher);
                 });
                 
-                // הוספת השוברים של משק הבית (רק אם הם לא קיימים כבר)
+                // נוסיף את שוברי משק הבית רק אם הם לא קיימים כבר במפה
                 householdVouchers.forEach(voucher => {
-                    if (!uniqueVouchers.has(voucher.id)) {
-                        uniqueVouchers.set(voucher.id, voucher);
+                    if (!vouchersMap.has(voucher.id)) {
+                        vouchersMap.set(voucher.id, voucher);
                     }
                 });
                 
-                // המרת המפה חזרה למערך
-                const allVouchers = Array.from(uniqueVouchers.values()).sort((a, b) => {
-                    if (sortOrder === 'desc') {
-                        return b.createdAt.getTime() - a.createdAt.getTime();
-                    }
-                    return a.createdAt.getTime() - b.createdAt.getTime();
-                });
+                // המרת המפה לרשימה
+                const allVouchers = Array.from(vouchersMap.values());
+                
+                // בדיקת לוג - שוברים נצברים והסרת כפילויות
+                console.log('נטענו', personalVouchers.length, 'שוברים אישיים');
+                console.log('נטענו', householdVouchers.length, 'שוברים של משק בית');
+                console.log('לאחר הסרת כפילויות:', allVouchers.length, 'שוברים');
+                
+                const partialVouchers = allVouchers.filter(v => v.isPartial);
+                console.log('מתוכם', partialVouchers.length, 'שוברים נצברים');
                 
                 setVouchers(allVouchers);
                 setFilteredVouchers(allVouchers);
@@ -251,6 +254,8 @@ export default function Vouchers() {
         expiryDate?: string;
         imageFile?: File;
         category?: string;
+        isPartial?: boolean;
+        remainingAmount?: number;
     }) => {
         if (!user) return;
         
@@ -262,30 +267,45 @@ export default function Vouchers() {
                 throw new Error('יש למלא את שם החנות והסכום');
             }
             
-            // נקה את שם החנות מתווים מסוכנים
-            voucherData.storeName = voucherData.storeName.replace(/<\/?[^>]+(>|$)/g, "");
-            
-            // אם יש תמונה, נעלה אותה קודם
-            let imageUrl: string | undefined;
-            if (voucherData.imageFile) {
-                imageUrl = await storageService.uploadImage(user.uid, voucherData.imageFile, 'vouchers');
-            }
-            
-            // הוספת השובר למשק הבית או למשתמש
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            // הוספת השובר תחילה ללא תמונה
             const voucherId = await vouchersService.addVoucher(user.uid, {
                 storeName: voucherData.storeName,
                 amount: voucherData.amount,
                 expiryDate: voucherData.expiryDate,
-                imageUrl,
+                imageUrl: undefined, // נעלה את התמונה בהמשך
+                category: voucherData.category,
                 householdId: household?.id || null,
-                category: voucherData.category
+                isPartial: voucherData.isPartial || false,
+                remainingAmount: voucherData.isPartial ? voucherData.amount : undefined
             });
             
-            // טעינה מחדש של השוברים
-            await loadUserData();
+            // יצירת אובייקט שובר חדש למצב המקומי
+            const newVoucher: Voucher = {
+                id: voucherId,
+                storeName: voucherData.storeName,
+                amount: voucherData.amount,
+                expiryDate: voucherData.expiryDate,
+                imageUrl: undefined,
+                userId: user.uid,
+                createdAt: new Date(),
+                isUsed: false,
+                category: voucherData.category,
+                isPartial: voucherData.isPartial || false,
+                remainingAmount: voucherData.isPartial ? voucherData.amount : undefined
+            };
             
-            setSelectedImage(null);
+            // עכשיו, אם יש תמונה, נעלה אותה עם המזהה שנוצר
+            if (voucherData.imageFile && voucherId) {
+                const imageUrl = await handleUploadImage(voucherData.imageFile, voucherId);
+                if (imageUrl) {
+                    newVoucher.imageUrl = imageUrl;
+                }
+            }
+            
+            // הוספת השובר החדש למצב הנוכחי
+            setVouchers(prev => [newVoucher, ...prev]);
+            setFilteredVouchers(prev => [newVoucher, ...prev]);
+            
             // סגירת המודל אחרי הוספה מוצלחת
             setIsAddModalOpen(false);
         } catch (error) {
@@ -299,11 +319,29 @@ export default function Vouchers() {
         if (!user) return;
         
         try {
+            // מציאת השובר במצב המקומי
+            const voucher = vouchers.find(v => v.id === voucherId);
+            if (!voucher) return;
+            
+            // עדכון השובר בדאטאבייס
             await vouchersService.toggleVoucherUsed(voucherId, !currentStatus);
             
             // עדכון הסטייט המקומי
             setVouchers(prev => 
-                prev.map(v => v.id === voucherId ? {...v, isUsed: !currentStatus} : v)
+                prev.map(v => {
+                    if (v.id === voucherId) {
+                        return {
+                            ...v, 
+                            isUsed: !currentStatus,
+                            // אם מסמנים את השובר כלא מומש והוא נצבר, יש לשמור את הסכום הנותר
+                            // אם מסמנים את השובר כמומש והוא נצבר, אפשר לאפס את הסכום הנותר
+                            remainingAmount: v.isPartial ? 
+                                (!currentStatus ? 0 : v.amount) : 
+                                v.remainingAmount
+                        };
+                    }
+                    return v;
+                })
             );
         } catch (error) {
             alert('שגיאה בעדכון סטטוס שובר');
@@ -369,6 +407,12 @@ export default function Vouchers() {
         try {
             setLoading(true);
             
+            // בדיקת מזהה שובר
+            if (!voucherId) {
+                console.error('ניסיון להעלות תמונה ללא מזהה שובר');
+                throw new Error('יש צורך במזהה שובר תקין כדי להעלות תמונה');
+            }
+            
             // בדיקת סוג הקובץ והגודל
             const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
             if (!allowedTypes.includes(file.type)) {
@@ -430,6 +474,49 @@ export default function Vouchers() {
             }
         } catch (error) {
             alert('שגיאה בעדכון תאריך תפוגה: ' + (error instanceof Error ? error.message : String(error)));
+            throw error;
+        }
+    };
+
+    // פונקציה לעדכון הסכום הנותר בשובר נצבר
+    const handleUpdateRemainingAmount = async (voucherId: string, remainingAmount: number) => {
+        try {
+            // בדיקת תקינות הערך
+            if (remainingAmount < 0) {
+                throw new Error('ערך הסכום הנותר חייב להיות חיובי');
+            }
+            
+            // מציאת השובר הנוכחי
+            const currentVoucher = vouchers.find(v => v.id === voucherId);
+            if (!currentVoucher) {
+                throw new Error('השובר לא נמצא');
+            }
+            
+            // עדכון ברמה המקומית
+            const updatedVouchers = vouchers.map(voucher => {
+                if (voucher.id === voucherId) {
+                    return {
+                        ...voucher,
+                        isPartial: true, // וידוא שהשובר מסומן כנצבר
+                        remainingAmount: remainingAmount,
+                        // אם הסכום הנותר הוא 0, השובר נחשב כמומש
+                        isUsed: remainingAmount === 0
+                    } as Voucher;
+                }
+                return voucher;
+            });
+            setVouchers(updatedVouchers);
+            
+            // עדכון ברמת השרת - דאג שהשובר יסומן גם כנצבר
+            await vouchersService.updateVoucher(voucherId, {
+                isPartial: true,
+                remainingAmount
+            });
+            
+            // עדכון הסכום הנותר
+            await vouchersService.updateRemainingAmount(voucherId, remainingAmount);
+        } catch (error) {
+            alert('שגיאה בעדכון הסכום הנותר: ' + (error instanceof Error ? error.message : String(error)));
             throw error;
         }
     };
@@ -734,6 +821,7 @@ export default function Vouchers() {
                                 onUploadImage={(file) => handleUploadImage(file, voucher.id)}
                                 onViewImage={(imageUrl) => setSelectedImage(imageUrl)}
                                 onUpdateExpiryDate={(voucherId, expiryDate) => handleUpdateExpiryDate(voucherId, expiryDate)}
+                                onUpdateRemainingAmount={(voucherId, remainingAmount) => handleUpdateRemainingAmount(voucherId, remainingAmount)}
                             />
                         ))}
                     </div>

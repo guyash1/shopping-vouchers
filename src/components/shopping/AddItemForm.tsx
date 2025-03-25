@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { Plus, History } from "lucide-react";
+import { Plus, History, Camera } from "lucide-react";
 
 interface HistoryItem {
   name: string;
@@ -64,11 +64,12 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
 
   // טיפול באיבוד פוקוס
   const handleBlur = (e: React.FocusEvent) => {
-    // בודקים אם הקליק היה על הדרופדאון
-    if (dropdownRef.current?.contains(e.relatedTarget as Node)) {
-      return;
-    }
-    setShowDropdown(false);
+    // בדיקה מתוקנת למובייל - נשתמש ב- setTimeout כדי לתת לאירוע הקליק להתבצע לפני סגירת הדרופדאון
+    setTimeout(() => {
+      if (dropdownRef.current && !dropdownRef.current.contains(document.activeElement)) {
+        setShowDropdown(false);
+      }
+    }, 200);
   };
 
   // עדכון תצוגה מקדימה של תמונה כשמוצר נמצא בהיסטוריה
@@ -92,8 +93,30 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
 
   // טיפול בבחירת פריט מההיסטוריה
   const handleSelectItem = (item: HistoryItem) => {
+    // עדכון הקלט ללא סגירה מיידית של הדרופדאון - נסגור אותו באמצעות setTimeout
     setInputValue(item.name);
-    setShowDropdown(false);
+    
+    // פוקוס על שדה הקלט להמשך הזנה
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+    
+    // סגירה אחרי השהייה קצרה
+    setTimeout(() => {
+      setShowDropdown(false);
+      setSelectedIndex(null);
+    }, 100);
+  };
+
+  // מניעת סגירת הדרופדאון בלחיצה
+  const handleDropdownClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // וידוא שהאינפוט נשאר בפוקוס
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,14 +200,20 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
       const selectedItem = filteredItems[selectedIndex];
       handleSelectItem(selectedItem);
     } else if (e.key === 'Escape') {
+      e.preventDefault(); // חשוב למנוע התנהגות ברירת מחדל על מובייל
       setShowDropdown(false);
       setSelectedIndex(null);
+    } else if (e.key === 'Tab') {
+      // מניעת סגירה אוטומטית בלחיצה על Tab במובייל
+      if (showDropdown) {
+        e.preventDefault();
+      }
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-4 mb-4">
-      <div className="flex gap-2 mb-2 relative">
+      <div className="flex gap-2 mb-3 relative">
         <div className="flex-1 relative">
           <input
             ref={inputRef}
@@ -195,28 +224,45 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             placeholder="הוסף פריט חדש..."
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             dir="rtl"
             autoComplete="off"
           />
           
-          {/* דרופדאון היסטוריה */}
+          {/* דרופדאון היסטוריה - עם תיקון למובייל */}
           {showDropdown && filteredItems.length > 0 && (
             <div
               ref={dropdownRef}
-              className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto"
+              className="absolute z-20 w-full bg-white mt-1 rounded-lg shadow-lg max-h-60 overflow-auto border border-gray-200"
+              onClick={handleDropdownClick}
+              onTouchStart={(e) => {
+                // למובייל - למנוע בלור שסוגר את הדרופדאון
+                e.preventDefault();
+              }}
             >
+              <div className="py-1 px-2 bg-gray-50 text-xs text-gray-500 border-b border-gray-200">
+                מוצרים שקנית בעבר
+              </div>
               {filteredItems.map((item, index) => (
                 <button
                   key={item.name}
-                  className={`w-full text-right px-4 py-2 hover:bg-gray-100 flex items-center justify-between ${
-                    selectedIndex === index ? 'bg-gray-100' : ''
+                  type="button" // חשוב לציין שזה לא כפתור שליחה
+                  className={`w-full text-right px-3 py-2 hover:bg-blue-50 flex items-center justify-between ${
+                    selectedIndex === index ? 'bg-blue-50' : ''
                   }`}
-                  onClick={() => handleSelectItem(item)}
+                  onClick={(e) => {
+                    e.preventDefault(); // למניעת שליחת הטופס
+                    e.stopPropagation(); // למניעת התרחשות בלור שיסגור את הדרופדאון
+                    handleSelectItem(item);
+                  }}
+                  onTouchStart={(e) => {
+                    // למובייל - וידוא שהאלמנט לא יאבד פוקוס
+                    e.stopPropagation();
+                  }}
                   onMouseEnter={() => setSelectedIndex(index)}
                 >
                   <div className="flex items-center gap-2">
-                    <span>{item.name}</span>
+                    <span className="font-medium text-gray-700">{item.name}</span>
                   </div>
                   {item.imageUrl && (
                     <img
@@ -236,13 +282,13 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
           value={quantity}
           onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
           min="1"
-          className="w-20 px-2 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-16 px-2 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
           aria-label="כמות"
         />
         <button
           type="submit"
           disabled={loading || !inputValue.trim()}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="הוסף פריט חדש"
         >
           <Plus className="w-5 h-5" />
@@ -251,7 +297,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
       
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 cursor-pointer text-blue-500 hover:text-blue-600">
+          <label className="flex items-center gap-1 cursor-pointer text-blue-500 hover:text-blue-600 text-sm">
             <input
               type="file"
               ref={fileInputRef}
@@ -259,28 +305,29 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
               className="hidden"
               onChange={handleImageChange}
             />
-            <span className="text-sm">
+            <Camera className="w-4 h-4" />
+            <span>
               {imagePreview ? 'החלף תמונה' : 'הוסף תמונה'}
             </span>
           </label>
           
           {imagePreview && (
-            <>
-              <div className="w-8 h-8 relative">
+            <div className="flex items-center gap-1">
+              <div className="w-6 h-6 relative overflow-hidden rounded">
                 <img 
                   src={imagePreview} 
                   alt="תצוגה מקדימה" 
-                  className="w-full h-full object-cover rounded"
+                  className="w-full h-full object-cover"
                 />
               </div>
               <button
                 type="button"
                 onClick={handleClearImage}
-                className="text-red-500 hover:text-red-600 text-sm"
+                className="text-red-500 hover:text-red-600 text-xs"
               >
                 הסר
               </button>
-            </>
+            </div>
           )}
         </div>
         

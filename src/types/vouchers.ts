@@ -8,6 +8,8 @@ export interface Voucher {
     createdAt: Date;
     isUsed: boolean;
     category?: string;
+    isPartial?: boolean;
+    remainingAmount?: number;
 } 
 
 export enum VoucherSort {

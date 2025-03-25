@@ -57,117 +57,105 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = ({
   };
 
   return (
-    <div className={`flex items-center gap-3 p-4 rounded-lg shadow ${getItemBackgroundColor(item.status)}`}>
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{item.name}</span>
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-gray-500">({item.quantity})</span>
+    <div className={`flex items-center gap-3 p-3 rounded-lg shadow ${getItemBackgroundColor(item.status)} relative border-b border-gray-100`}>
+      <div className="flex-1 flex items-start gap-2">
+        {/* תמונת המוצר */}
+        <div className="flex-shrink-0">
+          {item.imageUrl ? (
+            <div className="relative group w-14 h-14">
+              <img 
+                src={item.imageUrl} 
+                alt={item.name} 
+                className="w-full h-full object-cover rounded cursor-pointer transition-transform duration-200 group-hover:scale-105" 
+                onClick={() => setIsImageModalOpen(true)}
+              />
+            </div>
+          ) : (
+            <div className="w-14 h-14 flex items-center justify-center border rounded border-gray-200 bg-gray-50">
+              <label className="flex items-center justify-center cursor-pointer w-full h-full">
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  className="hidden" 
+                  onChange={handleImageUpload}
+                  disabled={isUploading}
+                />
+                <Camera className={`${isUploading ? 'text-gray-400 animate-pulse' : 'text-gray-400'}`} size={20} />
+              </label>
+            </div>
+          )}
+        </div>
+
+        {/* פרטי המוצר */}
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-800">{item.name}</span>
+                {/* תיבת כמות בולטת */}
+                <div className="inline-flex items-center bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
+                  <span className="font-semibold text-blue-700">{item.quantity}</span>
+                </div>
+              </div>
+            </div>
             <button
               onClick={() => onEditQuantity(item)}
-              className="p-1 text-gray-400 hover:text-blue-500"
+              className="p-1 text-gray-400 hover:text-blue-500 flex-shrink-0"
               aria-label="ערוך כמות"
             >
               <Edit className="w-4 h-4" />
             </button>
           </div>
-        </div>
-        
-        {item.imageUrl ? (
-          <div className="mt-2 relative group">
-            <img 
-              src={item.imageUrl} 
-              alt={item.name} 
-              className="w-16 h-16 object-cover rounded cursor-pointer" 
-              onClick={() => setIsImageModalOpen(true)}
-            />
-            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <button
-                  className="p-1 rounded-full bg-white shadow-md hover:bg-gray-100"
-                  onClick={() => setIsImageModalOpen(true)}
-                  aria-label="הגדל תמונה"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                  </svg>
-                </button>
-                <label className="p-1 rounded-full bg-white shadow-md hover:bg-gray-100 cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageUpload}
-                    disabled={isUploading}
-                  />
-                  <RefreshCw className="h-4 w-4" />
-                </label>
-              </div>
+          
+          {/* כפתורי פעולה */}
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1">
+              <button
+                onClick={() => handleStatusToggle('inCart')}
+                className={`p-1.5 rounded-full hover:bg-green-100 ${
+                  item.status === 'inCart' ? 'bg-green-100' : ''
+                }`}
+                aria-label="סמן כנמצא בעגלה"
+              >
+                <ShoppingCart className={`w-4 h-4 ${
+                  item.status === 'inCart' ? 'text-green-500' : 'text-gray-400'
+                }`} />
+              </button>
+              
+              <button
+                onClick={() => handleStatusToggle('partial')}
+                className={`p-1.5 rounded-full hover:bg-yellow-100 ${
+                  item.status === 'partial' ? 'bg-yellow-100' : ''
+                }`}
+                aria-label="סמן כנלקח חלקית"
+              >
+                <MinusCircle className={`w-4 h-4 ${
+                  item.status === 'partial' ? 'text-yellow-500' : 'text-gray-400'
+                }`} />
+              </button>
+              
+              <button
+                onClick={() => handleStatusToggle('missing')}
+                className={`p-1.5 rounded-full hover:bg-red-100 ${
+                  item.status === 'missing' ? 'bg-red-100' : ''
+                }`}
+                aria-label="סמן כחסר במלאי"
+              >
+                <AlertCircle className={`w-4 h-4 ${
+                  item.status === 'missing' ? 'text-red-500' : 'text-gray-400'
+                }`} />
+              </button>
             </div>
+            
+            <button
+              onClick={() => onDelete(item.id)}
+              className="p-1.5 rounded-full hover:bg-gray-100"
+              aria-label="מחק פריט"
+            >
+              <X className="w-4 h-4 text-red-500" />
+            </button>
           </div>
-        ) : (
-          <div className="mt-2">
-            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md cursor-pointer hover:bg-blue-100 transition-colors">
-              <input 
-                type="file" 
-                accept="image/*"
-                className="hidden" 
-                onChange={handleImageUpload}
-                disabled={isUploading}
-              />
-              <Camera className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {isUploading ? 'מעלה תמונה...' : 'הוסף תמונה'}
-              </span>
-            </label>
-          </div>
-        )}
-      </div>
-      
-      <div className="flex gap-1">
-        <button
-          onClick={() => onDelete(item.id)}
-          className="p-2 rounded-full hover:bg-gray-100"
-          aria-label="מחק פריט"
-        >
-          <X className="w-5 h-5 text-red-500" />
-        </button>
-        
-        <button
-          onClick={() => handleStatusToggle('inCart')}
-          className={`p-2 rounded-full hover:bg-green-100 ${
-            item.status === 'inCart' ? 'bg-green-100' : ''
-          }`}
-          aria-label="סמן כנמצא בעגלה"
-        >
-          <ShoppingCart className={`w-5 h-5 ${
-            item.status === 'inCart' ? 'text-green-500' : 'text-gray-400'
-          }`} />
-        </button>
-        
-        <button
-          onClick={() => handleStatusToggle('partial')}
-          className={`p-2 rounded-full hover:bg-yellow-100 ${
-            item.status === 'partial' ? 'bg-yellow-100' : ''
-          }`}
-          aria-label="סמן כנלקח חלקית"
-        >
-          <MinusCircle className={`w-5 h-5 ${
-            item.status === 'partial' ? 'text-yellow-500' : 'text-gray-400'
-          }`} />
-        </button>
-        
-        <button
-          onClick={() => handleStatusToggle('missing')}
-          className={`p-2 rounded-full hover:bg-red-100 ${
-            item.status === 'missing' ? 'bg-red-100' : ''
-          }`}
-          aria-label="סמן כחסר במלאי"
-        >
-          <AlertCircle className={`w-5 h-5 ${
-            item.status === 'missing' ? 'text-red-500' : 'text-gray-400'
-          }`} />
-        </button>
+        </div>
       </div>
       
       {/* מודל תמונה מוגדלת - עם z-index גבוה ותמיכה בגרירה */}
@@ -187,7 +175,7 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = ({
             <X className="w-6 h-6 text-gray-700" />
           </button>
           
-          <div className="bg-white p-4 rounded-lg shadow-xl overflow-hidden max-w-full max-h-full">
+          <div className="bg-white p-4 rounded-lg shadow-xl overflow-hidden max-w-full max-h-full animate-scale-up">
             <h3 className="text-xl font-semibold text-center mb-4">{item.name}</h3>
             <div className="overflow-auto max-h-[70vh]">
               <img 
@@ -197,9 +185,47 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = ({
                 style={{ minHeight: '200px' }}
               />
             </div>
+
+            {/* כפתור להחלפת התמונה */}
+            <div className="mt-4 flex justify-center">
+              <label className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-md cursor-pointer hover:bg-blue-100 transition-colors">
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  className="hidden" 
+                  onChange={handleImageUpload}
+                  disabled={isUploading}
+                />
+                <RefreshCw className="w-5 h-5" />
+                <span className="font-medium">
+                  {isUploading ? 'מעלה תמונה...' : 'החלף תמונה'}
+                </span>
+              </label>
+            </div>
           </div>
         </div>
       </Modal>
+
+      {/* סרגל סטטוס בתחתית הפריט */}
+      <div className="absolute bottom-0 left-0 right-0 h-1">
+        {item.status === 'inCart' && <div className="bg-green-500 h-full w-full"></div>}
+        {item.status === 'partial' && <div className="bg-yellow-500 h-full w-full"></div>}
+        {item.status === 'missing' && <div className="bg-red-500 h-full w-full"></div>}
+      </div>
     </div>
   );
 }; 
+
+// הוספת סגנון אנימציה באמצעות CSS
+const styleElement = document.createElement('style');
+styleElement.textContent = `
+  @keyframes scale-up {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  
+  .animate-scale-up {
+    animation: scale-up 0.2s ease-out forwards;
+  }
+`;
+document.head.appendChild(styleElement); 

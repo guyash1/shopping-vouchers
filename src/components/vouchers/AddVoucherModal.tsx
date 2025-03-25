@@ -22,6 +22,8 @@ interface AddVoucherModalProps {
     expiryDate?: string;
     imageFile?: File;
     category?: string;
+    isPartial?: boolean;
+    remainingAmount?: number;
   }) => Promise<void>;
 }
 
@@ -34,6 +36,7 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
   const [loading, setLoading] = useState<boolean>(false);
   const [customStoreName, setCustomStoreName] = useState<string>('');
   const [category, setCategory] = useState<string>(VOUCHER_CATEGORIES[0].id);
+  const [isPartial, setIsPartial] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -85,12 +88,16 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
     setLoading(true);
     
     try {
+      const parsedAmount = parseFloat(amount);
       await onAddVoucher({
         storeName: finalStoreName,
-        amount: parseFloat(amount),
+        amount: parsedAmount,
         expiryDate,
         imageFile: selectedImage || undefined,
-        category
+        category,
+        isPartial,
+        // אם זה שובר נצבר, הסכום ההתחלתי הוא מלוא הסכום
+        remainingAmount: isPartial ? parsedAmount : undefined
       });
       
       // איפוס הטופס
@@ -101,6 +108,7 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
       setImagePreview(null);
       setCustomStoreName('');
       setCategory(VOUCHER_CATEGORIES[0].id);
+      setIsPartial(false);
       
       // סגירת המודל
       onClose();
@@ -161,6 +169,37 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
                   <span className="text-xs mt-1">{cat.name}</span>
                 </button>
               ))}
+            </div>
+          </div>
+          
+          {/* שדה סוג שובר - חד פעמי או נצבר */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">סוג שובר</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                className={`flex flex-col items-center justify-center p-3 border rounded-lg ${
+                  !isPartial
+                    ? 'bg-blue-100 border-blue-400'
+                    : 'border-gray-200 hover:bg-gray-50'
+                }`}
+                onClick={() => setIsPartial(false)}
+              >
+                <span className="font-medium">חד פעמי</span>
+                <span className="text-xs mt-1 text-gray-500">השובר נמחק לאחר שימוש מלא</span>
+              </button>
+              <button
+                type="button"
+                className={`flex flex-col items-center justify-center p-3 border rounded-lg ${
+                  isPartial
+                    ? 'bg-blue-100 border-blue-400'
+                    : 'border-gray-200 hover:bg-gray-50'
+                }`}
+                onClick={() => setIsPartial(true)}
+              >
+                <span className="font-medium">נצבר</span>
+                <span className="text-xs mt-1 text-gray-500">ניתן לשימוש חלקי פעמים רבות</span>
+              </button>
             </div>
           </div>
           

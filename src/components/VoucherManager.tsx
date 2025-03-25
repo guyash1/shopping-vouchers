@@ -180,7 +180,7 @@ export default function VoucherManager() {
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-bold">{voucher.store}</h3>
-                <p className="text-lg">₪{voucher.amount.toFixed(2)}</p>
+                <p className="text-lg">₪{typeof voucher.amount === 'number' ? voucher.amount.toFixed(2) : '0.00'}</p>
                 <p
                   className={`text-sm ${
                     isExpired(voucher.expiryDate)

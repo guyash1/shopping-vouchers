@@ -27,6 +27,7 @@ interface VoucherItemProps {
   onUploadImage: (file: File) => Promise<string>;
   onViewImage?: (imageUrl: string) => void;
   onUpdateExpiryDate?: (voucherId: string, expiryDate: string | null) => Promise<void>;
+  onUpdateRemainingAmount?: (voucherId: string, remainingAmount: number) => Promise<void>;
 }
 
 export const VoucherItem: React.FC<VoucherItemProps> = ({
@@ -35,11 +36,14 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
   onToggleUsed,
   onUploadImage,
   onViewImage,
-  onUpdateExpiryDate
+  onUpdateExpiryDate,
+  onUpdateRemainingAmount
 }) => {
   const [showImageOptions, setShowImageOptions] = useState(false);
   const [showExpiryDatePicker, setShowExpiryDatePicker] = useState(false);
+  const [showRemainingAmountEditor, setShowRemainingAmountEditor] = useState(false);
   const [newExpiryDate, setNewExpiryDate] = useState<string>('');
+  const [newRemainingAmount, setNewRemainingAmount] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
@@ -136,6 +140,7 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
       // סגירת כל התפריטים לפני המחיקה למניעת בעיות רינדור
       setShowExpiryDatePicker(false);
       setShowImageOptions(false);
+      setShowRemainingAmountEditor(false);
       setIsEditing(false);
       
       // קריאה לפונקציית המחיקה
@@ -143,6 +148,54 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
     } catch (error) {
       console.error('שגיאה במחיקת שובר:', error);
     }
+  };
+
+  // פתיחת עריכת הסכום הנותר
+  const openRemainingAmountEditor = () => {
+    if (voucher.isPartial && voucher.remainingAmount !== undefined) {
+      const remainingAmount = typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount : 0;
+      setNewRemainingAmount(remainingAmount.toString());
+      setShowRemainingAmountEditor(true);
+    }
+  };
+
+  // עדכון הסכום הנותר
+  const handleUpdateRemainingAmount = async () => {
+    if (!onUpdateRemainingAmount) return;
+    
+    try {
+      const amount = parseFloat(newRemainingAmount);
+      if (isNaN(amount) || amount < 0) {
+        alert('יש להזין סכום תקין');
+        return;
+      }
+      
+      // וידוא שהסכום החדש לא גדול מהסכום המקורי
+      if (amount > voucher.amount) {
+        alert('הסכום הנותר לא יכול להיות גדול מהסכום המקורי');
+        return;
+      }
+      
+      await onUpdateRemainingAmount(voucher.id, amount);
+      setShowRemainingAmountEditor(false);
+    } catch (error) {
+      console.error('שגיאה בעדכון סכום נותר:', error);
+      alert('שגיאה בעדכון סכום נותר');
+    }
+  };
+
+  // חישוב אחוז הניצול של שובר נצבר
+  const getUsagePercentage = () => {
+    if (!voucher.isPartial || voucher.remainingAmount === undefined) return 0;
+    
+    // וידוא שהסכום הנותר הוא מספר
+    const remainingAmount = typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount : 0;
+    
+    // חישוב כמה נוצל מהשובר
+    const usedAmount = voucher.amount - remainingAmount;
+    const percentage = (usedAmount / voucher.amount) * 100;
+    
+    return Math.min(100, Math.max(0, percentage));
   };
 
   const getBorderColor = () => {
@@ -202,7 +255,7 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
               <div>
                 <h3 className="font-bold text-xl text-gray-500">{voucher.storeName}</h3>
                 <div className="flex items-center mt-1">
-                  <p className="text-xl font-bold text-gray-500">₪{voucher.amount.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-gray-500">₪{typeof voucher.amount === 'number' ? voucher.amount.toFixed(2) : '0.00'}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
@@ -226,7 +279,14 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
             <div>
               <h3 className="font-bold text-xl text-gray-800">{voucher.storeName}</h3>
               <div className="flex items-center mt-1">
-                <p className="text-xl font-bold text-green-600">₪{voucher.amount.toFixed(2)}</p>
+                <p className="text-xl font-bold text-green-600">₪{typeof voucher.amount === 'number' ? voucher.amount.toFixed(2) : '0.00'}</p>
+                
+                {/* תווית שובר נצבר */}
+                {voucher.isPartial && (
+                  <span className="mr-2 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                    נצבר
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex items-start gap-2">
@@ -257,6 +317,37 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
               </div>
             </div>
           </div>
+
+          {/* הצגת מידע על שובר נצבר */}
+          {voucher.isPartial && voucher.remainingAmount !== undefined && (
+            <div className="mb-3">
+              <div className="flex justify-between items-center text-sm mb-1">
+                <span className="font-medium">סכום נותר: ₪{typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount.toFixed(2) : '0.00'}</span>
+                <span className="text-xs text-gray-500">
+                  {getUsagePercentage().toFixed(0)}% נוצל
+                </span>
+              </div>
+              
+              {/* שורת התקדמות */}
+              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-500 rounded-full"
+                  style={{ width: `${getUsagePercentage()}%` }}
+                ></div>
+              </div>
+              
+              {/* כפתור עדכון סכום - רק אם השובר לא מומש */}
+              {!voucher.isUsed && onUpdateRemainingAmount && (
+                <button
+                  onClick={openRemainingAmountEditor}
+                  className="mt-2 text-xs flex items-center px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
+                >
+                  <Edit className="w-3 h-3 ml-1" />
+                  עדכן סכום נותר
+                </button>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-2 mb-3">
             {/* תאריך תפוגה */}
@@ -420,6 +511,53 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
                 className="py-1.5 px-3 bg-blue-100 text-blue-600 rounded-lg text-sm"
               >
                 {isEditing ? 'עדכן' : 'הוסף'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* עריכת סכום נותר */}
+      {showRemainingAmountEditor && (
+        <div className="mt-2 p-3 bg-gray-50 rounded-lg shadow-sm">
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="text-sm font-medium">עדכון סכום נותר</h4>
+            <button
+              onClick={() => setShowRemainingAmountEditor(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center">
+              <span className="text-sm ml-2">₪</span>
+              <input
+                type="number"
+                min="0"
+                max={voucher.amount}
+                step="0.01"
+                value={newRemainingAmount}
+                onChange={(e) => setNewRemainingAmount(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg"
+                placeholder="סכום נותר"
+              />
+            </div>
+            <div className="text-xs text-gray-500 mb-2">
+              סכום מקורי: ₪{typeof voucher.amount === 'number' ? voucher.amount.toFixed(2) : '0.00'}
+            </div>
+            <div className="flex justify-end gap-2 mt-1">
+              <button
+                onClick={() => setShowRemainingAmountEditor(false)}
+                className="py-1.5 px-3 bg-gray-100 text-gray-700 rounded-lg text-sm"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={handleUpdateRemainingAmount}
+                className="py-1.5 px-3 bg-blue-100 text-blue-600 rounded-lg text-sm"
+              >
+                עדכן
               </button>
             </div>
           </div>

@@ -318,7 +318,9 @@ export const vouchersService = {
           createdAt: data.createdAt.toDate(),
           userId: data.userId,
           householdId: data.householdId,
-          category: data.category || 'general'
+          category: data.category || 'general',
+          isPartial: data.isPartial || false,
+          remainingAmount: data.remainingAmount
         } as Voucher);
       });
       
@@ -386,7 +388,9 @@ export const vouchersService = {
           createdAt: data.createdAt.toDate(),
           userId: data.userId,
           householdId: data.householdId,
-          category: data.category || 'general'
+          category: data.category || 'general',
+          isPartial: data.isPartial || false,
+          remainingAmount: data.remainingAmount
         } as Voucher);
       });
       
@@ -420,6 +424,8 @@ export const vouchersService = {
     imageUrl?: string;
     householdId?: string | null;
     category?: string;
+    isPartial?: boolean;
+    remainingAmount?: number;
   }): Promise<string> {
     try {
       if (!userId) throw new Error('User ID is required');
@@ -448,17 +454,40 @@ export const vouchersService = {
         }
       }
       
-      // הכנת האובייקט להוספה
-      const voucherToAdd = {
-        ...voucherData,
+      // הכנת האובייקט להוספה (רק עם שדות חובה בהתחלה)
+      const voucherToAdd: Record<string, any> = {
         storeName: sanitizedStoreName,
+        amount: voucherData.amount,
         userId,
-        householdId: voucherData.householdId || null,
-        imageUrl: voucherData.imageUrl || null,
-        category: voucherData.category || 'general',
         createdAt: serverTimestamp(),
-        isUsed: false
+        isUsed: false,
+        category: voucherData.category || 'general',
+        isPartial: voucherData.isPartial || false,
       };
+      
+      // הוספת שדות נוספים רק אם יש להם ערך תקין
+      if (voucherData.householdId !== undefined) {
+        voucherToAdd.householdId = voucherData.householdId || null;
+      }
+      
+      if (voucherData.imageUrl) {
+        voucherToAdd.imageUrl = voucherData.imageUrl;
+      }
+      
+      if (voucherData.expiryDate) {
+        voucherToAdd.expiryDate = voucherData.expiryDate;
+      }
+      
+      // הוספת שדה remainingAmount רק אם זה שובר נצבר וערכו תקין
+      if (voucherData.isPartial && typeof voucherData.amount === 'number') {
+        // השתמש בערך שסופק או בערך ההתחלתי של amount
+        const remainingAmount = voucherData.remainingAmount !== undefined ? 
+              voucherData.remainingAmount : voucherData.amount;
+        
+        if (typeof remainingAmount === 'number' && !isNaN(remainingAmount)) {
+          voucherToAdd.remainingAmount = remainingAmount;
+        }
+      }
       
       const docRef = await addDoc(collection(db, 'vouchers'), voucherToAdd);
       
@@ -521,9 +550,9 @@ export const vouchersService = {
         updatedAt: serverTimestamp()
       };
       
-      // העתקת כל השדות מ-updates למעט expiryDate
+      // העתקת כל השדות מ-updates למעט expiryDate ו-remainingAmount
       Object.keys(updates).forEach(key => {
-        if (key !== 'expiryDate') {
+        if (key !== 'expiryDate' && key !== 'remainingAmount') {
           updateData[key] = (updates as Record<string, any>)[key];
         }
       });
@@ -536,6 +565,17 @@ export const vouchersService = {
         } else {
           // אחרת, השתמש בערך שסופק
           updateData['expiryDate'] = updates.expiryDate;
+        }
+      }
+      
+      // טיפול מיוחד בשדה remainingAmount
+      if ('remainingAmount' in updates) {
+        if (updates.remainingAmount === undefined || updates.remainingAmount === null) {
+          // אם הערך ריק, נמחק את השדה
+          updateData['remainingAmount'] = deleteField();
+        } else if (typeof updates.remainingAmount === 'number' && !isNaN(updates.remainingAmount)) {
+          // רק אם זה מספר תקין, נעדכן את הערך
+          updateData['remainingAmount'] = updates.remainingAmount;
         }
       }
       
@@ -588,10 +628,25 @@ export const vouchersService = {
         throw new Error('Unauthorized to update this voucher');
       }
       
-      await updateDoc(voucherRef, {
-        isUsed,
-        updatedAt: serverTimestamp()
-      });
+      // בדיקה אם זה שובר נצבר
+      const isPartial = voucherData.isPartial || false;
+      
+      // אם זה שובר נצבר, עדכן גם את הסכום הנותר
+      if (isPartial) {
+        await updateDoc(voucherRef, {
+          isUsed,
+          // אם מסמנים כמומש, הסכום הנותר הוא 0
+          // אם מסמנים כלא מומש, הסכום הנותר הוא הסכום המקורי
+          remainingAmount: isUsed ? 0 : voucherData.amount,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        // אם זה לא שובר נצבר, עדכן רק את הסטטוס
+        await updateDoc(voucherRef, {
+          isUsed,
+          updatedAt: serverTimestamp()
+        });
+      }
     } catch (error) {
       throw error;
     }
@@ -641,6 +696,84 @@ export const vouchersService = {
       }
       
       await deleteDoc(voucherRef);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // עדכון הסכום הנותר בשובר נצבר
+  async updateRemainingAmount(voucherId: string, remainingAmount: number): Promise<void> {
+    try {
+      if (!voucherId) throw new Error('Voucher ID is required');
+      if (isNaN(remainingAmount) || remainingAmount < 0) {
+        throw new Error('Valid remaining amount is required');
+      }
+      
+      // וידוא שהמשתמש הוא בעל השובר או חבר במשק הבית
+      const voucherRef = doc(db, 'vouchers', voucherId);
+      const voucherSnap = await getDoc(voucherRef);
+      
+      if (!voucherSnap.exists()) {
+        throw new Error('Voucher not found');
+      }
+      
+      const voucherData = voucherSnap.data();
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+      
+      // בדיקה אם המשתמש הוא הבעלים של השובר
+      const isOwner = voucherData.userId === currentUser.uid;
+      
+      // בדיקה אם המשתמש שייך למשק הבית של השובר
+      let isHouseholdMember = false;
+      
+      if (voucherData.householdId) {
+        // בדיקה במסד הנתונים אם המשתמש הוא חבר במשק הבית הזה
+        const householdRef = doc(db, 'households', voucherData.householdId);
+        const householdSnap = await getDoc(householdRef);
+        
+        if (householdSnap.exists()) {
+          const householdData = householdSnap.data();
+          isHouseholdMember = householdData.members && 
+                              householdData.members[currentUser.uid] !== undefined;
+        }
+      }
+      
+      // אם המשתמש אינו הבעלים ואינו חבר במשק הבית, אין לו הרשאה לעדכן
+      if (!isOwner && !isHouseholdMember) {
+        throw new Error('Unauthorized to update this voucher');
+      }
+      
+      // בדיקה אם השובר הוא מסוג נצבר
+      // אם לא, נהפוך אותו לנצבר במקום לזרוק שגיאה
+      const isPartial = voucherData.isPartial || false;
+      
+      if (!isPartial) {
+        console.log(`השובר ${voucherId} לא היה מסוג נצבר, מעדכן אותו להיות נצבר.`);
+        // עדכון השובר להיות נצבר
+        await updateDoc(voucherRef, {
+          isPartial: true,
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      // עדכון הסכום הנותר
+      await updateDoc(voucherRef, {
+        isPartial: true, // נוודא שוב שזה נצבר
+        remainingAmount,
+        updatedAt: serverTimestamp()
+      });
+
+      // אם הסכום הנותר הוא 0, אז השובר נחשב כמומש
+      if (remainingAmount === 0) {
+        await updateDoc(voucherRef, {
+          isUsed: true,
+          updatedAt: serverTimestamp()
+        });
+      }
     } catch (error) {
       throw error;
     }
