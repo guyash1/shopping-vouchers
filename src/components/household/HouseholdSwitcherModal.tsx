@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, PlusSquare, Copy } from 'lucide-react';
+import { X, PlusSquare, Copy, Users } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import { useHousehold } from '../../contexts/HouseholdContext';
 import { HouseholdManager } from './HouseholdManager';
@@ -15,7 +15,7 @@ const WhatsAppIcon = FaWhatsapp as unknown as React.FC<{ className?: string }>;
 
 export function HouseholdSwitcherModal({ isOpen, onClose }: Props) {
   const { households, selectedHousehold, setSelectedHousehold, refreshHouseholds } = useHousehold();
-  const [showManager, setShowManager] = useState(false);
+  const [managerMode, setManagerMode] = useState<'none' | 'create' | 'join'>('none');
 
   const handleSelect = (id: string) => {
     const hh = households.find(h => h.id === id) || null;
@@ -57,8 +57,7 @@ export function HouseholdSwitcherModal({ isOpen, onClose }: Props) {
   const handleManagerSuccess = (hh: any) => {
     refreshHouseholds();
     if (hh) setSelectedHousehold(hh);
-    setShowManager(false);
-    onClose();
+    setManagerMode('none');
   };
 
   // יצירת הודעת WhatsApp דינמית
@@ -79,7 +78,7 @@ export function HouseholdSwitcherModal({ isOpen, onClose }: Props) {
         <h2 className="text-lg font-bold mb-4 text-center">בחירת משק בית</h2>
 
         {/* תוכן ראשי (רשימה + כרטיס) מוצג רק כאשר לא פתוח מנהל המשקים */}
-        {!showManager && (
+        {managerMode === 'none' && (
           <>
             {/* רשימת משקי בית */}
             <ul className="space-y-2 max-h-56 overflow-y-auto mb-4">
@@ -131,20 +130,33 @@ export function HouseholdSwitcherModal({ isOpen, onClose }: Props) {
               </div>
             )}
 
-            {/* כפתור לפתיחת מנהל משקים */}
-            <button
-              onClick={() => setShowManager(true)}
-              className="w-full flex justify-center items-center gap-2 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              <PlusSquare className="w-4 h-4" />
-              הוסף / הצטרף למשק בית
-            </button>
+            {/* שני כפתורים במקום כפתור אחד */}
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setManagerMode('create')}
+                className="w-full flex justify-center items-center gap-2 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <PlusSquare className="w-4 h-4" />
+                צור משק בית נוסף
+              </button>
+              <button
+                onClick={() => setManagerMode('join')}
+                className="w-full flex justify-center items-center gap-2 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
+              >
+                <Users className="w-4 h-4" />
+                הצטרף למשק בית קיים
+              </button>
+            </div>
           </>
         )}
 
-        {/* תצוגת מנהל משקים */}
-        {showManager && (
-          <HouseholdManager onClose={() => setShowManager(false)} onSuccess={handleManagerSuccess} />
+        {/* תצוגת מנהל משקים - טפסי יצירה/הצטרפות בלבד */}
+        {managerMode !== 'none' && (
+          <HouseholdManager 
+            onClose={() => setManagerMode('none')} 
+            onSuccess={handleManagerSuccess} 
+            initialMode={managerMode}
+          />
         )}
       </div>
     </div>

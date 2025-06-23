@@ -12,6 +12,8 @@ import { VoucherItem } from './vouchers/VoucherItem';
 import { AddVoucherModal } from './vouchers/AddVoucherModal';
 import { vouchersService, storageService } from '../services/firebase';
 import { useHousehold } from '../contexts/HouseholdContext';
+import { db } from '../firebase';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 
 // קטגוריות שוברים
 const VOUCHER_CATEGORIES = [
@@ -75,13 +77,49 @@ export default function Vouchers() {
         };
     }, [activeDropdown]);
 
-    // טעינת משק הבית והשוברים מהדאטאבייס
+    // מאזין בזמן-אמת לשוברים
     useEffect(() => {
-        if (user) {
-            loadUserData();
+        if (!user) return;
+
+        let q;
+        if (household) {
+            q = query(
+                collection(db, 'vouchers'),
+                where('householdId', '==', household.id),
+                orderBy('createdAt', sortOrder)
+            );
+        } else {
+            q = query(
+                collection(db, 'vouchers'),
+                where('userId', '==', user.uid),
+                where('householdId', '==', null),
+                orderBy('createdAt', sortOrder)
+            );
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user, sortOrder, selectedHousehold]);
+
+        const unsubscribe = onSnapshot(q, snapshot => {
+            const live: Voucher[] = snapshot.docs.map(d => {
+                const data = d.data();
+                return {
+                    id: d.id,
+                    storeName: data.storeName,
+                    amount: data.amount,
+                    expiryDate: data.expiryDate || undefined,
+                    imageUrl: data.imageUrl || undefined,
+                    userId: data.userId,
+                    createdAt: data.createdAt?.toDate() || new Date(),
+                    isUsed: data.isUsed || false,
+                    category: data.category,
+                    isPartial: data.isPartial,
+                    remainingAmount: data.remainingAmount
+                } as Voucher;
+            });
+            setVouchers(live);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [user, household, sortOrder]);
 
     // סינון השוברים בהתאם לחיפוש ולקטגוריה
     useEffect(() => {

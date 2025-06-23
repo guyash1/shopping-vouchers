@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ShoppingCart, LogOut, HelpCircle, Home, Users } from "lucide-react";
 import { auth, db } from '../firebase';
-import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp, deleteField, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp, deleteField, getDoc, onSnapshot, orderBy } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { signOut } from 'firebase/auth';
 import Modal from 'react-modal';
@@ -110,6 +110,54 @@ export default function ShoppingList() {
       loadUserData();
     }
   }, [user, loadUserData]);
+
+  // מאזין בזמן-אמת לשינויים ברשימת הפריטים
+  useEffect(() => {
+    if (!user) return;
+
+    let q;
+    if (selectedHousehold) {
+      q = query(
+        collection(db, 'items'),
+        where('householdId', '==', selectedHousehold.id),
+        orderBy('createdAt', 'desc')
+      );
+    } else {
+      q = query(
+        collection(db, 'items'),
+        where('addedBy', '==', user.uid),
+        where('householdId', '==', null),
+        orderBy('createdAt', 'desc')
+      );
+    }
+
+    const unsubscribe = onSnapshot(q, snapshot => {
+      const liveItems: Item[] = snapshot.docs.map(d => {
+        const data = d.data();
+        // וידוא סטטוס תקין
+        let status = data.status;
+        if (!status || !['pending', 'inCart', 'missing', 'partial', 'purchased'].includes(status)) {
+          status = 'pending';
+        }
+        return {
+          id: d.id,
+          name: data.name,
+          quantity: data.quantity,
+          status,
+          imageUrl: data.imageUrl || null,
+          purchaseCount: data.purchaseCount || 0,
+          lastPurchaseDate: data.lastPurchaseDate?.toDate(),
+          lastPartialPurchaseDate: data.lastPartialPurchaseDate?.toDate(),
+          householdId: data.householdId,
+          addedBy: data.addedBy
+        } as Item;
+      });
+      setItems(liveItems);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, selectedHousehold]);
 
   // הפעלת מצב קניות אוטומטי כאשר יש מוצר בעגלה
   useEffect(() => {

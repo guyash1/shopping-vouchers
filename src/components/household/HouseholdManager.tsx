@@ -8,13 +8,14 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 interface HouseholdManagerProps {
   onClose: () => void;
   onSuccess?: (household: Household | null) => void;
+  initialMode?: 'create' | 'join';
 }
 
-export function HouseholdManager({ onClose, onSuccess }: HouseholdManagerProps) {
+export function HouseholdManager({ onClose, onSuccess, initialMode }: HouseholdManagerProps) {
   const [user] = useAuthState(auth);
   const [household, setHousehold] = useState<Household | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isJoining, setIsJoining] = useState(false);
+  const [isCreating, setIsCreating] = useState(initialMode === 'create');
+  const [isJoining, setIsJoining] = useState(initialMode === 'join');
   const [householdName, setHouseholdName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [error, setError] = useState('');
