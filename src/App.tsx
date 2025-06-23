@@ -6,7 +6,7 @@ import { Auth } from './components/Auth';
 import ShoppingList from './components/ShoppingList';
 import Vouchers from './components/Vouchers';
 import { ScrollText, Receipt, BarChart3 } from "lucide-react";
-import { HouseholdProvider, useHousehold } from './contexts/HouseholdContext';
+import { HouseholdProvider } from './contexts/HouseholdContext';
 import { HouseholdSwitcherModal } from './components/household/HouseholdSwitcherModal';
 
 // קומפוננטת סטטיסטיקות פשוטה
@@ -28,7 +28,6 @@ const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
 function BottomNavbar() {
   const location = useLocation();
   const currentPath = location.pathname;
-  const { selectedHousehold } = useHousehold();
 
   return (
     <div className="fixed bottom-0 right-0 left-0 bg-white border-t z-50">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ShoppingCart, X, LogOut, HelpCircle, Home, Users } from "lucide-react";
+import { ShoppingCart, LogOut, HelpCircle, Home, Users } from "lucide-react";
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp, deleteField, getDoc } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -12,7 +12,7 @@ import { EditQuantityModal } from './shopping/EditQuantityModal';
 import { PartialItemModal } from './shopping/PartialItemModal';
 import { ShoppingItem } from './shopping/ShoppingItem';
 import { AddItemForm } from './shopping/AddItemForm';
-import { shoppingListService, storageService, householdService } from '../services/firebase';
+import { shoppingListService, storageService } from '../services/firebase';
 import { useHousehold } from '../contexts/HouseholdContext';
 
 Modal.setAppElement('#root');
