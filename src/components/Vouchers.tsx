@@ -10,7 +10,8 @@ import {
 import { Voucher } from '../types/vouchers';
 import { VoucherItem } from './vouchers/VoucherItem';
 import { AddVoucherModal } from './vouchers/AddVoucherModal';
-import { vouchersService, storageService, householdService } from '../services/firebase';
+import { vouchersService, storageService } from '../services/firebase';
+import { useHousehold } from '../contexts/HouseholdContext';
 
 // קטגוריות שוברים
 const VOUCHER_CATEGORIES = [
@@ -24,13 +25,15 @@ const VOUCHER_CATEGORIES = [
 
 export default function Vouchers() {
     const [user] = useAuthState(auth);
+    const { selectedHousehold } = useHousehold();
+    const household = selectedHousehold; // alias for readability
+
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [vouchers, setVouchers] = useState<Voucher[]>([]);
     const [filteredVouchers, setFilteredVouchers] = useState<Voucher[]>([]);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [loading, setLoading] = useState(true);
-    const [household, setHousehold] = useState<any>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [showFilters, setShowFilters] = useState(false);
@@ -78,7 +81,7 @@ export default function Vouchers() {
             loadUserData();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user, sortOrder]);
+    }, [user, sortOrder, selectedHousehold]);
 
     // סינון השוברים בהתאם לחיפוש ולקטגוריה
     useEffect(() => {
@@ -185,64 +188,32 @@ export default function Vouchers() {
         
         setLoading(true);
         try {
-            // טעינת משק הבית (אם קיים)
-            const userHousehold = await householdService.getUserHousehold(user.uid);
-            setHousehold(userHousehold);
-            
-            try {
-                // טעינת השוברים האישיים
-                const personalVouchers = await vouchersService.getVouchers(user.uid, sortOrder);
-            
-                // טעינת השוברים של משק הבית (אם קיים)
-                let householdVouchers: Voucher[] = [];
-                if (userHousehold) {
-                    householdVouchers = await vouchersService.getHouseholdVouchers(userHousehold.id, sortOrder);
-                }
-                
-                // ניצור מפתח של השוברים הקיימים לפי ID כדי לזהות כפילויות
-                const vouchersMap = new Map<string, Voucher>();
-                
-                // תחילה נוסיף את כל השוברים האישיים
-                personalVouchers.forEach(voucher => {
-                    vouchersMap.set(voucher.id, voucher);
-                });
-                
-                // נוסיף את שוברי משק הבית רק אם הם לא קיימים כבר במפה
-                householdVouchers.forEach(voucher => {
-                    if (!vouchersMap.has(voucher.id)) {
-                        vouchersMap.set(voucher.id, voucher);
-                    }
-                });
-                
-                // המרת המפה לרשימה
-                const allVouchers = Array.from(vouchersMap.values());
-                
-                // בדיקת לוג - שוברים נצברים והסרת כפילויות
-                console.log('נטענו', personalVouchers.length, 'שוברים אישיים');
-                console.log('נטענו', householdVouchers.length, 'שוברים של משק בית');
-                console.log('לאחר הסרת כפילויות:', allVouchers.length, 'שוברים');
-                
-                const partialVouchers = allVouchers.filter(v => v.isPartial);
-                console.log('מתוכם', partialVouchers.length, 'שוברים נצברים');
-                
-                setVouchers(allVouchers);
-                setFilteredVouchers(allVouchers);
-            } catch (error: any) {
-                // בדיקה לשגיאת אינדקס של פיירבייס
-                if (error.message && (
-                    error.message.includes('index') || 
-                    error.message.includes('9-Prop-Order') || 
-                    error.message.includes('no matching index')
-                )) {
-                    alert(`שגיאת אינדקס בפיירבייס. יש ללחוץ על הקישור בקונסול כדי להוסיף אינדקס חדש.
-אם האינדקס כבר הוסף, אנא המתן כ-5 דקות עד שהאינדקס יתעדכן.`);
-                    console.error('פרטי שגיאת האינדקס:', error);
-                } else {
-                    alert('שגיאה בטעינת שוברים: ' + error.message);
-                }
+            let fetched: Voucher[] = [];
+
+            if (household) {
+                // שוברים של משק הבית הנבחר
+                fetched = await vouchersService.getHouseholdVouchers(household.id, sortOrder);
+            } else {
+                // שוברים אישיים בלבד
+                fetched = await vouchersService.getVouchers(user.uid, sortOrder);
             }
+
+            console.log('טענו', fetched.length, 'שוברים');
+            setVouchers(fetched);
+            setFilteredVouchers(fetched);
         } catch (error: any) {
-            alert('שגיאה בטעינת נתונים: ' + (error.message || 'אירעה שגיאה'));
+            // בדיקה לשגיאת אינדקס של פיירבייס
+            if (error.message && (
+                error.message.includes('index') || 
+                error.message.includes('9-Prop-Order') || 
+                error.message.includes('no matching index')
+            )) {
+                alert(`שגיאת אינדקס בפיירבייס. יש ללחוץ על הקישור בקונסול כדי להוסיף אינדקס חדש.
+אם האינדקס כבר הוסף, אנא המתן כ-5 דקות עד שהאינדקס יתעדכן.`);
+                console.error('פרטי שגיאת האינדקס:', error);
+            } else {
+                alert('שגיאה בטעינת שוברים: ' + error.message);
+            }
         } finally {
             setLoading(false);
         }
@@ -530,7 +501,7 @@ export default function Vouchers() {
             <div className="flex justify-between items-center mb-4">
                 <div>
                     <h1 className="text-2xl font-bold">השוברים שלי</h1>
-                    {household && (
+                    {household ? (
                         <div className="relative dropdown-container">
                             <button
                                 onClick={() => toggleDropdown('household')}
@@ -562,6 +533,11 @@ export default function Vouchers() {
                                     </ul>
                                 </div>
                             )}
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1 text-sm text-gray-500">
+                            <Users className="w-4 h-4" />
+                            <span>אישי</span>
                         </div>
                     )}
                 </div>

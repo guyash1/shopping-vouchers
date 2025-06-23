@@ -7,9 +7,10 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 
 interface HouseholdManagerProps {
   onClose: () => void;
+  onSuccess?: (household: Household | null) => void;
 }
 
-export function HouseholdManager({ onClose }: HouseholdManagerProps) {
+export function HouseholdManager({ onClose, onSuccess }: HouseholdManagerProps) {
   const [user] = useAuthState(auth);
   const [household, setHousehold] = useState<Household | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -45,6 +46,9 @@ export function HouseholdManager({ onClose }: HouseholdManagerProps) {
       setError('');
       setLoading(true);
       await householdService.createHousehold(user.uid, householdName);
+      const hh = await householdService.getUserHousehold(user.uid);
+      setHousehold(hh);
+      if (onSuccess) onSuccess(hh);
       await loadHousehold();
       setIsCreating(false);
     } catch (error) {
@@ -60,6 +64,9 @@ export function HouseholdManager({ onClose }: HouseholdManagerProps) {
       setError('');
       setLoading(true);
       await householdService.joinHousehold(joinCode, user.uid);
+      const hh = await householdService.getUserHousehold(user.uid);
+      setHousehold(hh);
+      if (onSuccess) onSuccess(hh);
       await loadHousehold();
       setIsJoining(false);
     } catch (error: any) {
@@ -95,6 +102,74 @@ export function HouseholdManager({ onClose }: HouseholdManagerProps) {
     return (
       <div className="flex justify-center items-center py-4">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (isCreating) {
+    return (
+      <div className="space-y-4">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+        <input
+          type="text"
+          value={householdName}
+          onChange={(e) => setHouseholdName(e.target.value)}
+          placeholder="שם משק הבית"
+          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          dir="rtl"
+        />
+        <div className="flex space-x-2 rtl:space-x-reverse">
+          <button
+            onClick={handleCreateHousehold}
+            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            צור
+          </button>
+          <button
+            onClick={() => setIsCreating(false)}
+            className="flex-1 bg-gray-100 text-gray-600 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            ביטול
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isJoining) {
+    return (
+      <div className="space-y-4">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+        <input
+          type="text"
+          value={joinCode}
+          onChange={(e) => setJoinCode(e.target.value)}
+          placeholder="הכנס קוד שיתוף"
+          className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          dir="rtl"
+        />
+        <div className="flex space-x-2 rtl:space-x-reverse">
+          <button
+            onClick={handleJoinHousehold}
+            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            הצטרף
+          </button>
+          <button
+            onClick={() => setIsJoining(false)}
+            className="flex-1 bg-gray-100 text-gray-600 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            ביטול
+          </button>
+        </div>
       </div>
     );
   }
@@ -149,77 +224,39 @@ export function HouseholdManager({ onClose }: HouseholdManagerProps) {
               עזוב משק בית
             </button>
           )}
+          <div className="mt-4 space-y-2">
+            <button
+              onClick={() => setIsCreating(true)}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+            >
+              <Home className="w-5 h-5 ml-2" />
+              צור משק בית נוסף
+            </button>
+            <button
+              onClick={() => setIsJoining(true)}
+              className="w-full bg-gray-100 text-gray-600 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
+            >
+              <Users className="w-5 h-5 ml-2" />
+              הצטרף למשק בית קיים
+            </button>
+          </div>
         </div>
       ) : (
-        <div>
-          {isCreating ? (
-            <div className="space-y-4">
-              <input
-                type="text"
-                value={householdName}
-                onChange={(e) => setHouseholdName(e.target.value)}
-                placeholder="שם משק הבית"
-                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                dir="rtl"
-              />
-              <div className="flex space-x-2 rtl:space-x-reverse">
-                <button
-                  onClick={handleCreateHousehold}
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  צור משק בית
-                </button>
-                <button
-                  onClick={() => setIsCreating(false)}
-                  className="flex-1 bg-gray-100 text-gray-600 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  ביטול
-                </button>
-              </div>
-            </div>
-          ) : isJoining ? (
-            <div className="space-y-4">
-              <input
-                type="text"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                placeholder="הכנס קוד שיתוף"
-                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                dir="rtl"
-              />
-              <div className="flex space-x-2 rtl:space-x-reverse">
-                <button
-                  onClick={handleJoinHousehold}
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  הצטרף למשק בית
-                </button>
-                <button
-                  onClick={() => setIsJoining(false)}
-                  className="flex-1 bg-gray-100 text-gray-600 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  ביטול
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <button
-                onClick={() => setIsCreating(true)}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-              >
-                <Home className="w-5 h-5 ml-2" />
-                צור משק בית חדש
-              </button>
-              <button
-                onClick={() => setIsJoining(true)}
-                className="w-full bg-gray-100 text-gray-600 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
-              >
-                <Users className="w-5 h-5 ml-2" />
-                הצטרף למשק בית קיים
-              </button>
-            </div>
-          )}
+        <div className="space-y-4">
+          <button
+            onClick={() => setIsCreating(true)}
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+          >
+            <Home className="w-5 h-5 ml-2" />
+            צור משק בית חדש
+          </button>
+          <button
+            onClick={() => setIsJoining(true)}
+            className="w-full bg-gray-100 text-gray-600 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
+          >
+            <Users className="w-5 h-5 ml-2" />
+            הצטרף למשק בית קיים
+          </button>
         </div>
       )}
     </div>

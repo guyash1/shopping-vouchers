@@ -1114,5 +1114,56 @@ export const householdService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  // קבלת כל משקי הבית של המשתמש (גם בעלים וגם חבר)
+  async getUserHouseholds(userId: string): Promise<Household[]> {
+    try {
+      if (!userId) throw new Error('User ID is required');
+
+      const households: Household[] = [];
+
+      // משקי בית שהמשתמש הוא הבעלים שלהם
+      const ownedQuery = query(
+        collection(db, 'households'),
+        where('ownerId', '==', userId)
+      );
+      const ownedSnapshot = await getDocs(ownedQuery);
+      ownedSnapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        households.push({
+          id: docSnap.id,
+          code: data.code || '',
+          name: data.name || '',
+          ownerId: data.ownerId || '',
+          members: data.members || {},
+          createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
+        });
+      });
+
+      // משקי בית שהמשתמש חבר בהם
+      const memberQuery = query(
+        collection(db, 'households'),
+        where(`members.${userId}`, '!=', null)
+      );
+      const memberSnapshot = await getDocs(memberQuery);
+      memberSnapshot.forEach(docSnap => {
+        // להימנע מכפילות אם המשתמש גם בעלים
+        if (households.find(h => h.id === docSnap.id)) return;
+        const data = docSnap.data();
+        households.push({
+          id: docSnap.id,
+          code: data.code || '',
+          name: data.name || '',
+          ownerId: data.ownerId || '',
+          members: data.members || {},
+          createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
+        });
+      });
+
+      return households;
+    } catch (error) {
+      throw error;
+    }
   }
 }; 

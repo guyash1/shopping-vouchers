@@ -6,6 +6,8 @@ import { Auth } from './components/Auth';
 import ShoppingList from './components/ShoppingList';
 import Vouchers from './components/Vouchers';
 import { ScrollText, Receipt, BarChart3 } from "lucide-react";
+import { HouseholdProvider, useHousehold } from './contexts/HouseholdContext';
+import { HouseholdSwitcherModal } from './components/household/HouseholdSwitcherModal';
 
 // קומפוננטת סטטיסטיקות פשוטה
 function Stats() {
@@ -26,6 +28,7 @@ const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
 function BottomNavbar() {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { selectedHousehold } = useHousehold();
 
   return (
     <div className="fixed bottom-0 right-0 left-0 bg-white border-t z-50">
@@ -67,6 +70,13 @@ function BottomNavbar() {
 
 function App() {
   const [user, loading] = useAuthState(auth);
+  const [isSwitcherOpen, setSwitcherOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const handler = () => setSwitcherOpen(true);
+    window.addEventListener('openHouseholdSwitcher', handler);
+    return () => window.removeEventListener('openHouseholdSwitcher', handler);
+  }, []);
 
   if (loading) {
     return (
@@ -81,18 +91,21 @@ function App() {
   }
 
   return (
-    <Router>
-      <div dir="rtl" className="min-h-screen bg-gray-50">
-        <main className="pb-20">
-          <Routes>
-            <Route path="/" element={<ShoppingList />} />
-            <Route path="/vouchers" element={<Vouchers />} />
-            <Route path="/stats" element={<Stats />} />
-          </Routes>
-        </main>
-        <BottomNavbar />
-      </div>
-    </Router>
+    <HouseholdProvider>
+      <Router>
+        <div dir="rtl" className="min-h-screen bg-gray-50">
+          <main className="pb-20">
+            <Routes>
+              <Route path="/" element={<ShoppingList />} />
+              <Route path="/vouchers" element={<Vouchers />} />
+              <Route path="/stats" element={<Stats />} />
+            </Routes>
+          </main>
+          <BottomNavbar />
+          <HouseholdSwitcherModal isOpen={isSwitcherOpen} onClose={() => setSwitcherOpen(false)} />
+        </div>
+      </Router>
+    </HouseholdProvider>
   );
 }
 

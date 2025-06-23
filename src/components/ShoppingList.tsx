@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ShoppingCart, X, LogOut, HelpCircle, Home } from "lucide-react";
+import { ShoppingCart, X, LogOut, HelpCircle, Home, Users } from "lucide-react";
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp, deleteField, getDoc } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -13,11 +13,12 @@ import { PartialItemModal } from './shopping/PartialItemModal';
 import { ShoppingItem } from './shopping/ShoppingItem';
 import { AddItemForm } from './shopping/AddItemForm';
 import { shoppingListService, storageService, householdService } from '../services/firebase';
-import { HouseholdManager } from './household/HouseholdManager';
+import { useHousehold } from '../contexts/HouseholdContext';
 
 Modal.setAppElement('#root');
 
 export default function ShoppingList() {
+  const { selectedHousehold } = useHousehold();
   const [user] = useAuthState(auth);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,8 +36,6 @@ export default function ShoppingList() {
   }[]>([]);
   const [frequentItems, setFrequentItems] = useState<string[]>([]);
   const [partialItems, setPartialItems] = useState<Item[]>([]);
-  const [isHouseholdModalOpen, setIsHouseholdModalOpen] = useState(false);
-  const [household, setHousehold] = useState<any>(null);
   const [isShoppingActive, setIsShoppingActive] = useState(false);
 
   // טעינת נתוני המשתמש ופריטים
@@ -47,9 +46,7 @@ export default function ShoppingList() {
       setLoading(true);
       
       // טעינת משק הבית של המשתמש
-      const userHousehold = await householdService.getUserHousehold(user.uid);
-      // עדכון סטייט משק הבית
-      setHousehold(userHousehold || null);
+      const userHousehold = selectedHousehold;
       
       try {
         // טעינת הפריטים
@@ -105,7 +102,7 @@ export default function ShoppingList() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, selectedHousehold]);
 
   // טעינת הפריטים מהדאטאבייס בטעינת הקומפוננטה
   useEffect(() => {
@@ -135,13 +132,13 @@ export default function ShoppingList() {
       // טעינת היסטוריה ישירות מהפיירסטור בשאילתה מקיפה
       let historyQuery;
       
-      if (household) {
-        console.log(`מחפש מוצרים במצב "purchased" במשק בית ${household.id}`);
+      if (selectedHousehold) {
+        console.log(`מחפש מוצרים במצב "purchased" במשק בית ${selectedHousehold.id}`);
         
         // שאילתה לכל הפריטים ששייכים למשק הבית במצב purchased
         historyQuery = query(
           collection(db, 'items'),
-          where('householdId', '==', household.id),
+          where('householdId', '==', selectedHousehold.id),
           where('status', '==', 'purchased')
         );
       } else {
@@ -212,14 +209,14 @@ export default function ShoppingList() {
     } catch (error) {
       console.error('שגיאה בטעינת היסטוריה:', error);
     }
-  }, [user, household]);
+  }, [user, selectedHousehold]);
 
   // טעינת ההיסטוריה באופן אוטומטי בכל שינוי של משק הבית
   useEffect(() => {
     if (user) {
       loadHistory();
     }
-  }, [user, household, loadHistory]);
+  }, [user, selectedHousehold, loadHistory]);
   
   // טעינת ההיסטוריה כאשר פותחים את המודל
   useEffect(() => {
@@ -244,12 +241,12 @@ export default function ShoppingList() {
       // חיפוש המוצר בדאטאבייס לפי שם ושייכות למשתמש או למשק בית
       let itemQuery;
       
-      if (household) {
+      if (selectedHousehold) {
         // נחפש רק מוצרים במשק הבית הנוכחי
         itemQuery = query(
           collection(db, 'items'),
           where('name', '==', itemName.trim()),
-          where('householdId', '==', household.id)
+          where('householdId', '==', selectedHousehold.id)
         );
       } else {
         // נחפש רק מוצרים אישיים של המשתמש
@@ -302,7 +299,7 @@ export default function ShoppingList() {
               quantity,
               status: 'pending',
               imageUrl: existingImageUrl || null,
-              householdId: household ? household.id : null,
+              householdId: selectedHousehold ? selectedHousehold.id : null,
               addedBy: user.uid
             } as Item];
           }
@@ -319,10 +316,9 @@ export default function ShoppingList() {
         
         const newItemData = {
           name: itemName.trim(),
-          status: 'pending' as 'pending',
           quantity: quantity,
           addedBy: user.uid,
-          householdId: household ? household.id : null,
+          householdId: selectedHousehold ? selectedHousehold.id : null,
           imageUrl: imageUrl || null
         };
         
@@ -332,7 +328,8 @@ export default function ShoppingList() {
         setItems(prev => [...prev, { 
           ...newItemData, 
           id: itemId,
-          purchaseCount: 0
+          purchaseCount: 0,
+          householdId: selectedHousehold ? selectedHousehold.id : null
         } as Item]);
         
         console.log('נוסף מוצר חדש:', itemId);
@@ -439,12 +436,12 @@ export default function ShoppingList() {
       // חיפוש המוצר בדאטאבייס - חשוב: נחפש רק מוצרים ששייכים למשתמש או למשק הבית שלו
       let householdQuery;
       
-      if (household) {
+      if (selectedHousehold) {
         // חיפוש בתוך מוצרי משק הבית
         householdQuery = query(
           collection(db, 'items'),
           where('name', '==', itemName),
-          where('householdId', '==', household.id)
+          where('householdId', '==', selectedHousehold.id)
         );
       } else {
         // חיפוש רק במוצרים האישיים של המשתמש
@@ -460,7 +457,7 @@ export default function ShoppingList() {
       
       console.log(`חיפוש מוצר "${itemName}" מההיסטוריה:`, 
         querySnapshot.size, 'תוצאות',
-        household ? `במשק בית ${household.id}` : 'אישי');
+        selectedHousehold ? `במשק בית ${selectedHousehold.id}` : 'אישי');
       
       if (!querySnapshot.empty) {
         // מצאנו את המוצר ששייך למשתמש או למשק הבית - נעדכן את הסטטוס שלו ל-PENDING
@@ -529,12 +526,12 @@ export default function ShoppingList() {
       // קבלת כל הפריטים עם השם הזה, בהתאם למשק הבית או למשתמש
       let historyQuery;
       
-      if (household) {
+      if (selectedHousehold) {
         // חיפוש בפריטים של משק הבית
         historyQuery = query(
           collection(db, 'items'),
           where('name', '==', itemName),
-          where('householdId', '==', household.id),
+          where('householdId', '==', selectedHousehold.id),
           where('status', '==', 'purchased')
         );
       } else {
@@ -738,7 +735,7 @@ export default function ShoppingList() {
           // הזהירות: לא נשנה את householdId אם כבר יש לפריט
           const itemDoc = await getDoc(itemRef);
           const existingHouseholdId = itemDoc.exists() ? itemDoc.data().householdId : null;
-          const finalHouseholdId = existingHouseholdId !== undefined ? existingHouseholdId : (household ? household.id : null);
+          const finalHouseholdId = existingHouseholdId !== undefined ? existingHouseholdId : (selectedHousehold ? selectedHousehold.id : undefined);
           
           // עדכון סטטוס הפריט ל-purchased ועדכון מונה רכישות
           await updateDoc(itemRef, {
@@ -764,7 +761,7 @@ export default function ShoppingList() {
           purchaseCount: (item.purchaseCount || 0) + 1,
           lastPurchaseDate: new Date(),
           // שמירת householdId הקיים של הפריט אם יש כזה
-          householdId: item.householdId !== undefined ? item.householdId : (household ? household.id : null)
+          householdId: item.householdId !== undefined ? item.householdId : (selectedHousehold ? selectedHousehold.id : undefined)
         } : item
       )
     );
@@ -852,10 +849,21 @@ export default function ShoppingList() {
     <div className="max-w-md mx-auto p-4 pb-24">
       {/* כותרת ראשית וכפתורי פעולה */}
       <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">רשימת קניות</h1>
+          <div>
+            <h1 className="text-2xl font-bold">רשימת קניות</h1>
+            {selectedHousehold && (
+              <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
+                <Users className="w-4 h-4" />
+                <span>{selectedHousehold.name}</span>
+              </div>
+            )}
+          </div>
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
             <button
-            onClick={() => setIsHouseholdModalOpen(true)}
+            onClick={() => {
+              const ev = new CustomEvent('openHouseholdSwitcher');
+              window.dispatchEvent(ev);
+            }}
             className="p-2 rounded-full hover:bg-gray-100"
             aria-label="ניהול משק בית"
           >
@@ -1033,23 +1041,6 @@ export default function ShoppingList() {
           items={partialItems}
         onSave={handleSavePartialItems}
         />
-
-        <Modal
-        isOpen={isHouseholdModalOpen}
-        onRequestClose={() => setIsHouseholdModalOpen(false)}
-        className="modal-content relative bg-white rounded-lg shadow-xl max-w-md mx-auto mt-24 p-6"
-        overlayClassName="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
-      >
-              <button
-          onClick={() => setIsHouseholdModalOpen(false)}
-          className="absolute top-4 left-4 p-2 rounded-full hover:bg-gray-100"
-          aria-label="סגור"
-              >
-          <X className="w-5 h-5 text-gray-500" />
-              </button>
-        <h2 className="text-xl font-bold mb-4 text-center">ניהול משק בית</h2>
-        <HouseholdManager onClose={() => setIsHouseholdModalOpen(false)} />
-        </Modal>
     </div>
   );
 }
