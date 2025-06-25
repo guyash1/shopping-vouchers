@@ -18,6 +18,16 @@ import { Skeleton } from './shared/Skeleton';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
+// מיפוי קטגוריות – קבוע מחוץ לקומפוננטה כדי שלא ייחשב תלות
+const HEB_CAT: Record<string, string> = {
+  supermarket: 'סופרמרקט',
+  restaurant: 'מסעדות',
+  fuel: 'דלק',
+  fashion: 'אופנה',
+  general: 'כללי',
+  אחר: 'אחר',
+};
+
 export default function Stats() {
   const [user] = useAuthState(auth);
   const { selectedHousehold } = useHousehold();
@@ -46,15 +56,6 @@ export default function Stats() {
   }, [user, selectedHousehold]);
 
   // --- Voucher stats ---
-  const HEB_CAT: Record<string, string> = {
-    supermarket: 'סופרמרקט',
-    restaurant: 'מסעדות',
-    fuel: 'דלק',
-    fashion: 'אופנה',
-    general: 'כללי',
-    אחר: 'אחר',
-  };
-
   // Data per category -> pie per stores
   const perCategory = React.useMemo(() => {
     const data: {
@@ -90,7 +91,7 @@ export default function Stats() {
     // sort categories by total desc
     data.sort((a, b) => b.total - a.total);
     return data;
-  }, [vouchers, HEB_CAT]);
+  }, [vouchers]);
 
   if (!user) return <div className="p-4 text-center">יש להתחבר כדי לצפות בסטטיסטיקות</div>;
 
