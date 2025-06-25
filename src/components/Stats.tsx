@@ -14,7 +14,6 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { vouchersService } from '../services/firebase';
 import { useHousehold } from '../contexts/HouseholdContext';
 import { Voucher } from '../types/vouchers';
-import { Skeleton } from './shared/Skeleton';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
@@ -97,8 +96,8 @@ export default function Stats() {
 
   if (loading) {
     return (
-      <div className="max-w-md mx-auto p-4 space-y-4">
-        <Skeleton className="h-72" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-l-blue-600"></div>
       </div>
     );
   }

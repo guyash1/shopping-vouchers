@@ -7,7 +7,7 @@
 }
 
 body {
-  font-family: var(--font-family);
+  font-family: 'Noto Sans Hebrew', sans-serif;
   margin: 0;
   direction: rtl;
   -webkit-font-smoothing: antialiased;
@@ -42,4 +42,9 @@ code {
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
   }
+}
+
+[dir="rtl"] input,
+[dir="rtl"] textarea {
+  text-align: right;
 }

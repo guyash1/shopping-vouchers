@@ -122,7 +122,7 @@ export default function RedeemVouchers() {
       {result && (
         <div className="bg-white shadow rounded p-4 space-y-2">
           <p className="font-semibold">סכום מומש: ₪{result.sum.toLocaleString()}</p>
-          <p className="font-semibold">שוברים שנוצלו ({selectedStore}):</p>
+          <p className="font-semibold">שוברים שיש לנצל ({selectedStore}):</p>
           {Object.keys(result.used).length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {Object.entries(result.used)
