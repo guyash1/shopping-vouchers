@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, PlusSquare, Copy, Users } from 'lucide-react';
+import { X, PlusSquare, Copy, Users, ChevronRight, CheckCircle } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import { useHousehold } from '../../contexts/HouseholdContext';
 import { HouseholdManager } from './HouseholdManager';
@@ -80,17 +80,22 @@ export function HouseholdSwitcherModal({ isOpen, onClose }: Props) {
         {/* תוכן ראשי (רשימה + כרטיס) מוצג רק כאשר לא פתוח מנהל המשקים */}
         {managerMode === 'none' && (
           <>
+            {/* כותרת ברורה */}
+            <p className="text-sm font-medium mb-2 text-center text-gray-700">בחר/י משק בית פעיל</p>
+
             {/* רשימת משקי בית */}
-            <ul className="space-y-2 max-h-56 overflow-y-auto mb-4">
+            <ul className="space-y-2 max-h-56 overflow-y-auto mb-2 border rounded-lg p-2 bg-gray-50">
               {households.map(hh => (
                 <li key={hh.id}>
                   <button
                     onClick={() => handleSelect(hh.id)}
-                    className={`w-full flex justify-between items-center px-3 py-2 rounded-lg border ${selectedHousehold?.id === hh.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                    className={`w-full flex justify-between items-center px-4 py-3 rounded-lg shadow-sm cursor-pointer transition border ${selectedHousehold?.id === hh.id ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-white hover:bg-gray-100 border-gray-200'}`}
                   >
                     <span>{hh.name}</span>
-                    {selectedHousehold?.id === hh.id && (
-                      <span className="text-xs text-blue-600">פעיל</span>
+                    {selectedHousehold?.id === hh.id ? (
+                      <CheckCircle className="w-5 h-5 text-blue-600" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
                     )}
                   </button>
                 </li>
@@ -99,6 +104,8 @@ export function HouseholdSwitcherModal({ isOpen, onClose }: Props) {
                 <li className="text-center text-sm text-gray-500">אין משקי בית</li>
               )}
             </ul>
+
+            <p className="text-center text-xs text-gray-500 mb-4">לחצו על משק הבית שתרצו להפעיל</p>
 
             {selectedHousehold && (
               <div className="bg-gray-100 rounded-xl p-4 mb-3">
