@@ -11,7 +11,7 @@ import {
 } from 'chart.js';
 import { auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { shoppingListService, vouchersService } from '../services/firebase';
+import { vouchersService } from '../services/firebase';
 import { useHousehold } from '../contexts/HouseholdContext';
 import { Voucher } from '../types/vouchers';
 import { Skeleton } from './shared/Skeleton';
@@ -90,7 +90,7 @@ export default function Stats() {
     // sort categories by total desc
     data.sort((a, b) => b.total - a.total);
     return data;
-  }, [vouchers]);
+  }, [vouchers, HEB_CAT]);
 
   if (!user) return <div className="p-4 text-center">יש להתחבר כדי לצפות בסטטיסטיקות</div>;
 
