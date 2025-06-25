@@ -36,7 +36,7 @@ function computeOptimal(target: number, values: number[], counts: Record<number,
     }
   }
 
-  // find best
+  // find best result
   for (let s = max; s >= 0; s--) {
     if (dp[s]) {
       const res = dp[s]!;
