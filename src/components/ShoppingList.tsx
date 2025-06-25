@@ -14,6 +14,7 @@ import { ShoppingItem } from './shopping/ShoppingItem';
 import { AddItemForm } from './shopping/AddItemForm';
 import { shoppingListService, storageService } from '../services/firebase';
 import { useHousehold } from '../contexts/HouseholdContext';
+import { Skeleton } from './shared/Skeleton';
 
 Modal.setAppElement('#root');
 
@@ -892,6 +893,24 @@ export default function ShoppingList() {
     await loadUserData();
     await loadHistory();
   };
+
+  if (!user) {
+    return <div className="p-4 text-center">יש להתחבר כדי לצפות ברשימת הקניות</div>;
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-md mx-auto p-4 space-y-3">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="w-6 h-6" />
+            <Skeleton className="flex-1 h-5" />
+            <Skeleton className="w-10 h-5" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto p-4 pb-24">

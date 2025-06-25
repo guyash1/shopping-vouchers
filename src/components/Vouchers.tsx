@@ -14,6 +14,7 @@ import { vouchersService, storageService } from '../services/firebase';
 import { useHousehold } from '../contexts/HouseholdContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { Skeleton } from './shared/Skeleton';
 
 // קטגוריות שוברים
 const VOUCHER_CATEGORIES = [
@@ -532,6 +533,23 @@ export default function Vouchers() {
 
     if (!user) {
         return <div className="p-4 text-center">יש להתחבר כדי לצפות בשוברים</div>;
+    }
+
+    if (loading) {
+        return (
+            <div className="max-w-md mx-auto p-4 space-y-4">
+                {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                        <Skeleton className="w-12 h-12" />
+                        <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4" />
+                            <Skeleton className="h-4 w-1/2" />
+                        </div>
+                        <Skeleton className="w-14 h-6" />
+                    </div>
+                ))}
+            </div>
+        );
     }
 
     return (

@@ -5,21 +5,11 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { Auth } from './components/Auth';
 import ShoppingList from './components/ShoppingList';
 import Vouchers from './components/Vouchers';
-import { ScrollText, Receipt, BarChart3 } from "lucide-react";
+import { ScrollText, Receipt, BarChart3, Wallet } from "lucide-react";
 import { HouseholdProvider } from './contexts/HouseholdContext';
 import { HouseholdSwitcherModal } from './components/household/HouseholdSwitcherModal';
-
-// קומפוננטת סטטיסטיקות פשוטה
-function Stats() {
-  return (
-    <div className="max-w-md mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">סטטיסטיקות</h1>
-      <div className="bg-white rounded-lg shadow p-4">
-        <p className="text-gray-600">בקרוב...</p>
-      </div>
-    </div>
-  );
-}
+import Stats from './components/Stats';
+import RedeemVouchers from './components/VoucherOptimizer';
 
 // פונקציית עזר לשילוב מחלקות CSS
 const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
@@ -62,6 +52,16 @@ function BottomNavbar() {
           <BarChart3 className="w-6 h-6" />
           <span className="text-xs mt-1">סטטיסטיקות</span>
         </Link>
+        <Link
+          to="/redeem"
+          className={cn(
+            "flex flex-col items-center p-2 rounded-lg",
+            currentPath === "/redeem" ? "text-blue-600" : "text-gray-600"
+          )}
+        >
+          <Wallet className="w-6 h-6" />
+          <span className="text-xs mt-1">מימוש</span>
+        </Link>
       </nav>
     </div>
   );
@@ -98,6 +98,7 @@ function App() {
               <Route path="/" element={<ShoppingList />} />
               <Route path="/vouchers" element={<Vouchers />} />
               <Route path="/stats" element={<Stats />} />
+              <Route path="/redeem" element={<RedeemVouchers />} />
             </Routes>
           </main>
           <BottomNavbar />
