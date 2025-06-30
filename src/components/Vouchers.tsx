@@ -5,7 +5,7 @@ import {
     Plus, Users, X, Search, 
     ShoppingCart, Utensils, Droplet, ShoppingBag, 
     Gift, Filter, ChevronDown, Bell, Settings,
-    List
+    List, CheckCircle, Trash2, RotateCcw
 } from 'lucide-react';
 import { Voucher } from '../types/vouchers';
 import { VoucherItem } from './vouchers/VoucherItem';
@@ -31,7 +31,7 @@ export default function Vouchers() {
     const household = selectedHousehold; // alias for readability
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
     const [vouchers, setVouchers] = useState<Voucher[]>([]);
     const [filteredVouchers, setFilteredVouchers] = useState<Voucher[]>([]);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -389,7 +389,7 @@ export default function Vouchers() {
             setVouchers(prev => prev.filter(v => v.id !== voucher.id));
             
             // למניעת שגיאת 404, נוודא שאנחנו לא עושים פעולות שיובילו לרינדור בעייתי
-            setSelectedImage(null);
+            setSelectedVoucher(null);
             setIsAddModalOpen(false);
             
             // הוספת קצת עיכוב לאפשר לממשק להתעדכן
@@ -529,6 +529,26 @@ export default function Vouchers() {
             throw error;
         }
     };
+
+    // נעל את גלילת הרקע כאשר המודל פתוח
+    useEffect(() => {
+        const html = document.documentElement;
+        const root = document.getElementById('root');
+        if (selectedVoucher) {
+            document.body.style.overflow = 'hidden';
+            html.style.overflow = 'hidden';
+            if (root) root.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+            html.style.overflow = '';
+            if (root) root.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+            html.style.overflow = '';
+            if (root) root.style.overflow = '';
+        };
+    }, [selectedVoucher]);
 
     if (!user) {
         return <div className="p-4 text-center">יש להתחבר כדי לצפות בשוברים</div>;
@@ -841,7 +861,7 @@ export default function Vouchers() {
                                 onDelete={() => handleDeleteVoucher(voucher)}
                                 onToggleUsed={() => handleToggleVoucherUsed(voucher.id, voucher.isUsed)}
                                 onUploadImage={(file) => handleUploadImage(file, voucher.id)}
-                                onViewImage={(imageUrl) => setSelectedImage(imageUrl)}
+                                onViewImage={(voucher) => setSelectedVoucher(voucher)}
                                 onUpdateExpiryDate={(voucherId, expiryDate) => handleUpdateExpiryDate(voucherId, expiryDate)}
                                 onUpdateRemainingAmount={(voucherId, remainingAmount) => handleUpdateRemainingAmount(voucherId, remainingAmount)}
                             />
@@ -858,28 +878,81 @@ export default function Vouchers() {
             />
 
             {/* תצוגת תמונה מוגדלת */}
-            {selectedImage && (
+            {selectedVoucher && selectedVoucher.imageUrl && (
                 <div 
-                    className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 pb-16 overflow-y-auto"
-                    onClick={() => setSelectedImage(null)}
+                    className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 pb-16 overflow-hidden"
+                    onClick={() => setSelectedVoucher(null)}
                 >
                     <div 
-                        className="relative w-full max-w-2xl max-h-[90vh] my-auto"
+                        className="relative w-full max-w-2xl max-h-[90vh] my-auto overflow-y-auto flex flex-col items-center"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button
-                            onClick={() => setSelectedImage(null)}
+                            onClick={() => setSelectedVoucher(null)}
                             className="absolute top-4 right-4 bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors"
                             aria-label="סגור תמונה"
                         >
                             <X className="w-6 h-6" />
                         </button>
+                        {/* כותרת השובר */}
+                        <div className="w-full text-center mb-4 px-2">
+                            <h2 className="text-2xl font-bold text-white drop-shadow mb-2">{selectedVoucher.storeName}</h2>
+                            {selectedVoucher.isPartial ? (
+                                <p className="text-lg text-gray-200">
+                                    נותרו: ₪{(selectedVoucher.remainingAmount ?? 0).toFixed(2)} מתוך ₪{selectedVoucher.amount.toFixed(2)}
+                                </p>
+                            ) : (
+                                <p className="text-lg text-gray-200">שובר על סך ₪{selectedVoucher.amount.toFixed(2)}</p>
+                            )}
+                        </div>
+
                         <img
-                            src={selectedImage}
+                            src={selectedVoucher.imageUrl}
                             alt="תמונת שובר מוגדלת"
                             className="w-full rounded-lg shadow-lg"
                             style={{ maxHeight: '80vh', objectFit: 'contain' }}
                         />
+
+                        {/* כפתורי פעולה */}
+                        <div className="flex justify-center gap-4 mt-4">
+                            {selectedVoucher.isUsed ? (
+                                <button
+                                    onClick={() => {
+                                        if (selectedVoucher) {
+                                           handleToggleVoucherUsed(selectedVoucher.id, selectedVoucher.isUsed);
+                                           setSelectedVoucher({ ...selectedVoucher, isUsed: !selectedVoucher.isUsed });
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg text-lg shadow hover:bg-yellow-600 transition-colors"
+                                >
+                                    <RotateCcw className="w-5 h-5" />
+                                    <span>שחזר</span>
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        if (selectedVoucher) {
+                                           handleToggleVoucherUsed(selectedVoucher.id, selectedVoucher.isUsed);
+                                           setSelectedVoucher({ ...selectedVoucher, isUsed: !selectedVoucher.isUsed });
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-lg shadow hover:bg-green-700 transition-colors"
+                                >
+                                    <CheckCircle className="w-5 h-5" />
+                                    <span>מומש</span>
+                                </button>
+                            )}
+                            <button
+                                onClick={() => {
+                                    handleDeleteVoucher(selectedVoucher);
+                                    setSelectedVoucher(null);
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-lg shadow hover:bg-red-700 transition-colors"
+                            >
+                                <Trash2 className="w-5 h-5" />
+                                <span>מחק</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

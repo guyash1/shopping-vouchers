@@ -25,7 +25,7 @@ interface VoucherItemProps {
   onDelete: () => void;
   onToggleUsed: () => void;
   onUploadImage: (file: File) => Promise<string>;
-  onViewImage?: (imageUrl: string) => void;
+  onViewImage?: (voucher: Voucher) => void;
   onUpdateExpiryDate?: (voucherId: string, expiryDate: string | null) => Promise<void>;
   onUpdateRemainingAmount?: (voucherId: string, remainingAmount: number) => Promise<void>;
 }
@@ -425,7 +425,7 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
         {voucher.imageUrl ? (
           <div className="relative w-20 h-20 shrink-0">
             <div 
-              onClick={() => onViewImage && onViewImage(voucher.imageUrl!)} 
+              onClick={() => onViewImage && onViewImage(voucher)} 
               className="group relative w-full h-full overflow-hidden rounded-lg cursor-pointer"
             >
               <img

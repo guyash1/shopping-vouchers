@@ -4,6 +4,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { vouchersService } from '../services/firebase';
 import { useHousehold } from '../contexts/HouseholdContext';
 import { Voucher } from '../types/vouchers';
+import { X, CheckCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface OptResult {
   sum: number;
@@ -55,6 +56,12 @@ export default function RedeemVouchers() {
   const [target, setTarget] = useState('');
   const [result, setResult] = useState<OptResult | null>(null);
   const [remainingMap, setRemainingMap] = useState<Record<number, number>>({});
+  const [wizardActive, setWizardActive] = useState(false);
+  const [wizardVouchers, setWizardVouchers] = useState<Voucher[]>([]);
+  const [wizIdx, setWizIdx] = useState(0);
+  const [doneCount, setDoneCount] = useState(0);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [usedList, setUsedList] = useState<Voucher[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -93,6 +100,82 @@ export default function RedeemVouchers() {
       if (rem[val] === 0) delete rem[val];
     });
     setRemainingMap(rem);
+  };
+
+  // בניית רשימת השוברים עבור האשף לפי סדר ההמלצה (ערך גבוה -> נמוך)
+  const buildWizardList = (): Voucher[] => {
+    if (!result) return [];
+    // נעתיק מפת ספירה זמנית
+    const needed: Record<number, number> = { ...result.used };
+    const orderedVals = Object.keys(needed).map(Number).sort((a, b) => b - a);
+    const list: Voucher[] = [];
+    orderedVals.forEach(val => {
+      let cnt = needed[val];
+      vouchers.filter(v => v.storeName === selectedStore && (v.remainingAmount ?? v.amount) === val && cnt > 0)
+        .forEach(v => {
+          if (cnt > 0) {
+            list.push(v);
+            cnt--;
+          }
+        });
+    });
+    return list;
+  };
+
+  const startWizard = () => {
+    const list = buildWizardList();
+    if (list.length === 0) return;
+    setWizardVouchers(list);
+    setWizardActive(true);
+    setWizIdx(0);
+    setDoneCount(0);
+    setUsedList([]);
+  };
+
+  const currentVoucher = wizardVouchers[wizIdx];
+
+  const finishWizard = () => {
+    setWizardActive(false);
+    setWizardVouchers([]);
+    setWizIdx(0);
+  };
+
+  const proceedNext = () => {
+    if (wizIdx + 1 < wizardVouchers.length) {
+      setWizIdx(wizIdx + 1);
+    } else {
+      setSummaryOpen(true);
+      setWizardActive(false);
+    }
+  };
+
+  const goPrev = () => {
+    if (wizIdx > 0) setWizIdx(wizIdx - 1);
+  };
+
+  // נעילת גלילת הרקע בזמן מודל פתוח
+  useEffect(() => {
+    const modalOpen = wizardActive || summaryOpen;
+    const html = document.documentElement;
+    if (modalOpen) {
+      document.body.style.overflow = 'hidden';
+      html.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      html.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      html.style.overflow = '';
+    };
+  }, [wizardActive, summaryOpen]);
+
+  const handleWizardToggleUsed = async () => {
+    if (!currentVoucher) return;
+    await vouchersService.toggleVoucherUsed(currentVoucher.id, !currentVoucher.isUsed);
+    setUsedList([...usedList, currentVoucher]);
+    setDoneCount(doneCount + 1);
+    proceedNext();
   };
 
   return (
@@ -147,6 +230,93 @@ export default function RedeemVouchers() {
               </div>
             </>
           )}
+
+          {/* כפתור להתחלת אשף מימוש */}
+          {Object.keys(result.used).length > 0 && (
+            <div className="text-center mt-4">
+              <button
+                onClick={startWizard}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700"
+              >
+                התחל מימוש עכשיו
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* אשף המימוש */}
+      {wizardActive && currentVoucher && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={finishWizard}>
+          <div className="relative w-full max-w-lg bg-white rounded-lg p-4 flex flex-col items-center" onClick={e => e.stopPropagation()}>
+            <button className="absolute top-2 right-2 text-gray-600" onClick={finishWizard}>
+              <X className="w-6 h-6" />
+            </button>
+
+            <h2 className="text-3xl font-bold text-center mb-3">{currentVoucher.storeName}</h2>
+            {currentVoucher.isPartial ? (
+              <p className="text-center mb-4 text-xl">נותרו: ₪{(currentVoucher.remainingAmount ?? 0).toFixed(2)} מתוך ₪{currentVoucher.amount.toFixed(2)}</p>
+            ) : (
+              <p className="text-center mb-4 text-xl">שובר על סך ₪{currentVoucher.amount.toFixed(2)}</p>
+            )}
+
+            {/* תמונה + חצים */}
+            <div className="relative w-full mb-6">
+              {currentVoucher.imageUrl && (
+                <img src={currentVoucher.imageUrl} alt="ברקוד" className="w-full max-h-[60vh] object-contain" />
+              )}
+              {/* חץ שמאל */}
+              {wizIdx > 0 && (
+                <button onClick={goPrev} className="absolute left-0 top-1/2 -translate-y-1/2 p-2 bg-white/70 rounded-full shadow">
+                  <ChevronLeft className="w-8 h-8" />
+                </button>
+              )}
+              {/* חץ ימין */}
+              {wizIdx < wizardVouchers.length - 1 && (
+                <button onClick={proceedNext} className="absolute right-0 top-1/2 -translate-y-1/2 p-2 bg-white/70 rounded-full shadow">
+                  <ChevronRight className="w-8 h-8" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex justify-center mb-6">
+              <button
+                onClick={handleWizardToggleUsed}
+                className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700"
+              >
+                <CheckCircle className="w-6 h-6" />
+                <span>{currentVoucher.isUsed ? 'הסר סימון' : 'מומש'}</span>
+              </button>
+            </div>
+
+            <span className="text-lg font-medium">{wizIdx + 1} / {wizardVouchers.length}</span>
+          </div>
+        </div>
+      )}
+
+      {/* סיכום */}
+      {summaryOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={()=>setSummaryOpen(false)}>
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full" onClick={e=>e.stopPropagation()}>
+            <h3 className="text-xl font-bold mb-4 text-center">המימוש הושלם!</h3>
+            <p className="mb-4 text-center">מומשו {usedList.length} שוברים:</p>
+            <ul className="text-right mb-4 max-h-40 overflow-y-auto pr-4 list-disc">
+              {usedList.map(v=> (
+                <li key={v.id}> {v.storeName} – ₪{v.amount.toFixed(2)}</li>
+              ))}
+            </ul>
+            <p className="text-center mb-4">האם למחוק את כל השוברים שמומשו?</p>
+            <div className="flex justify-center gap-4">
+              <button onClick={()=>{setSummaryOpen(false); window.location.reload();}} className="px-4 py-2 bg-gray-300 rounded">לא</button>
+              <button onClick={async ()=>{
+                for (const v of usedList) {
+                  await vouchersService.deleteVoucher(v.id);
+                }
+                setSummaryOpen(false);
+                window.location.reload();
+              }} className="px-4 py-2 bg-red-600 text-white rounded">מחק</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
