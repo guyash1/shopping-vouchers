@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface UsePageVisibilityOptions {
   inactivityTimeout?: number; // זמן בדקות לעצירה אוטומטית
@@ -35,7 +35,7 @@ export function usePageVisibility(options: UsePageVisibilityOptions = {}): UsePa
   const lastActivityRef = useRef<number>(Date.now());
 
   // איפוס טיימר חוסר פעילות
-  const resetInactivityTimer = () => {
+  const resetInactivityTimer = useCallback(() => {
     lastActivityRef.current = Date.now();
     
     if (inactivityTimerRef.current) {
@@ -48,7 +48,7 @@ export function usePageVisibility(options: UsePageVisibilityOptions = {}): UsePa
         setIsActive(false);
       }, inactivityTimeout * 60 * 1000);
     }
-  };
+  }, [enableInactivityTimeout, isVisible, inactivityTimeout]);
 
   // מאזין לשינויי visibility של הדף
   useEffect(() => {
@@ -83,7 +83,7 @@ export function usePageVisibility(options: UsePageVisibilityOptions = {}): UsePa
         clearTimeout(inactivityTimerRef.current);
       }
     };
-  }, [isVisible, inactivityTimeout, enableInactivityTimeout]);
+  }, [isVisible, inactivityTimeout, enableInactivityTimeout, resetInactivityTimer]);
 
   // מאזינים לפעילות משתמש כדי לאפס את הטיימר
   useEffect(() => {
@@ -107,22 +107,22 @@ export function usePageVisibility(options: UsePageVisibilityOptions = {}): UsePa
         document.removeEventListener(event, handleUserActivity, true);
       });
     };
-  }, [isVisible, isActive]);
+  }, [isVisible, isActive, resetInactivityTimer]);
 
   // פונקציות לשליטה ידנית
-  const forceActivate = () => {
+  const forceActivate = useCallback(() => {
     console.log('🔧 הפעלה ידנית של listeners');
     setIsActive(true);
     resetInactivityTimer();
-  };
+  }, [resetInactivityTimer]);
 
-  const forceDeactivate = () => {
+  const forceDeactivate = useCallback(() => {
     console.log('🔧 עצירה ידנית של listeners');
     setIsActive(false);
     if (inactivityTimerRef.current) {
       clearTimeout(inactivityTimerRef.current);
     }
-  };
+  }, []);
 
   return {
     isVisible,

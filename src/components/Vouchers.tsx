@@ -27,7 +27,7 @@ const VOUCHER_CATEGORIES = [
 export default function Vouchers() {
     const [user] = useAuthState(auth);
     const { selectedHousehold } = useHousehold();
-    const { vouchers, loading, error } = useVouchers();
+    const { vouchers, loading } = useVouchers();
     const household = selectedHousehold; // alias for readability
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);

@@ -12,7 +12,6 @@ import {
 import { auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { useVouchers } from '../contexts/VouchersContext';
-import { Voucher } from '../types/vouchers';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
@@ -28,7 +27,7 @@ const HEB_CAT: Record<string, string> = {
 
 export default function Stats() {
   const [user] = useAuthState(auth);
-  const { vouchers, loading, error } = useVouchers();
+  const { vouchers, loading } = useVouchers();
 
   // --- Voucher stats ---
   // Data per category -> pie per stores

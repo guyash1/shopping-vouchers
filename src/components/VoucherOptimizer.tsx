@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { auth } from '../firebase';
-import { useAuthState } from 'react-firebase-hooks/auth';
 import { vouchersService } from '../services/firebase';
 import { useVouchers } from '../contexts/VouchersContext';
 import { Voucher } from '../types/vouchers';
@@ -48,7 +46,6 @@ function computeOptimal(target: number, values: number[], counts: Record<number,
 }
 
 export default function RedeemVouchers() {
-  const [user] = useAuthState(auth);
   const { vouchers: allVouchers, loading } = useVouchers();
   const [stores, setStores] = useState<string[]>([]);
   const [selectedStore, setSelectedStore] = useState<string>('');
