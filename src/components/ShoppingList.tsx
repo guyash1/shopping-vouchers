@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ShoppingCart, LogOut, HelpCircle, Home, Users } from "lucide-react";
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp, deleteField, getDoc, onSnapshot, orderBy } from 'firebase/firestore';
@@ -14,12 +14,14 @@ import { ShoppingItem } from './shopping/ShoppingItem';
 import { AddItemForm } from './shopping/AddItemForm';
 import { shoppingListService, storageService } from '../services/firebase';
 import { useHousehold } from '../contexts/HouseholdContext';
+import { usePageVisibility } from '../utils/usePageVisibility';
 
 Modal.setAppElement('#root');
 
 export default function ShoppingList() {
   const { selectedHousehold } = useHousehold();
   const [user] = useAuthState(auth);
+  const { isActive } = usePageVisibility({ inactivityTimeout: 10, enableInactivityTimeout: true });
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -38,82 +40,21 @@ export default function ShoppingList() {
   const [partialItems, setPartialItems] = useState<Item[]>([]);
   const [isShoppingActive, setIsShoppingActive] = useState(false);
 
-  // טעינת נתוני המשתמש ופריטים
-  const loadUserData = useCallback(async () => {
-    if (!user) return;
-    
-    try {
-      setLoading(true);
-      
-      // טעינת משק הבית של המשתמש
-      const userHousehold = selectedHousehold;
-      
-      try {
-        // טעינת הפריטים
-        let loadedItems: Item[] = [];
-        
-        if (userHousehold) {
-          // אם המשתמש במשק בית, מביאים את כל הפריטים של משק הבית
-          loadedItems = await shoppingListService.getItems(userHousehold.id);
-        } else {
-          // אם המשתמש לא במשק בית, מביאים רק את הפריטים שלו
-          try {
-            // שימוש בפונקציה החדשה לקבלת פריטים אישיים
-            loadedItems = await shoppingListService.getUserItems(user.uid);
-          } catch (error: any) {
-            // בדיקה לשגיאת אינדקס ספציפית לשאילתת הפריטים האישיים
-            if (error.message && (
-                error.message.includes('index') || 
-                error.message.includes('9-Prop-Order') || 
-                error.message.includes('no matching index')
-            )) {
-              alert(`שגיאת אינדקס בפיירבייס בשאילתת פריטים אישיים. 
-יש ללחוץ על הקישור בקונסול כדי להוסיף אינדקס חדש.
-אם האינדקס כבר הוסף, אנא המתן כ-5 דקות עד שהאינדקס יתעדכן.`);
-              console.error('פרטי שגיאת האינדקס:', error);
-            } else {
-              throw error; // זורק את השגיאה הלאה אם היא לא קשורה לאינדקס
-            }
-          }
-        }
-        
-        setItems(loadedItems);
-        
-        // כבר לא טוענים היסטוריה כאן - useEffect ייעודי יטפל בזה
-        console.log('נטענו נתוני משתמש ופריטים פעילים בהצלחה');
-        
-      } catch (error: any) {
-        console.error('שגיאה בטעינת פריטים:', error);
-        // בדיקה לשגיאות אינדקס כלליות
-        if (error.message && (
-            error.message.includes('index') || 
-            error.message.includes('9-Prop-Order') || 
-            error.message.includes('no matching index')
-        )) {
-          alert(`שגיאת אינדקס בפיירבייס. יש ללחוץ על הקישור בקונסול כדי להוסיף אינדקס חדש.
-אם האינדקס כבר הוסף, אנא המתן כ-5 דקות עד שהאינדקס יתעדכן.`);
-        } else {
-          alert('שגיאה בטעינת פריטים: ' + error.message);
-        }
+  // הסרת הכפילות: onSnapshot למטה מספק גם טעינה ראשונית וגם עדכונים בזמן אמת
+
+  // מאזין בזמן-אמת לשינויים ברשימת הפריטים עם Page Visibility אופטימיזציה
+  useEffect(() => {
+    if (!user || !isActive) {
+      // אם אין משתמש או הטאב לא פעיל - לא מתחיל onSnapshot
+      if (!isActive && !user) {
+        console.log('🔇 onSnapshot עוצר - אין משתמש וטאב לא פעיל');
+      } else if (!isActive) {
+        console.log('🔇 onSnapshot עוצר - טאב לא פעיל (חיסכון בקריאות Firestore)');
       }
-    } catch (error: any) {
-      console.error('שגיאה בטעינת נתונים:', error);
-      alert('שגיאה בטעינת נתונים: ' + (error.message || 'אירעה שגיאה'));
-    } finally {
-      setLoading(false);
+      return;
     }
-  }, [user, selectedHousehold]);
 
-  // טעינת הפריטים מהדאטאבייס בטעינת הקומפוננטה
-  useEffect(() => {
-    if (user) {
-      loadUserData();
-    }
-  }, [user, loadUserData]);
-
-  // מאזין בזמן-אמת לשינויים ברשימת הפריטים
-  useEffect(() => {
-    if (!user) return;
+    console.log('🔊 onSnapshot מתחיל - טאב פעיל');
 
     let q;
     if (selectedHousehold) {
@@ -156,8 +97,11 @@ export default function ShoppingList() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [user, selectedHousehold]);
+    return () => {
+      console.log('🔇 onSnapshot מנותק');
+      unsubscribe();
+    };
+  }, [user, selectedHousehold, isActive]);
 
   // הפעלת מצב קניות אוטומטי כאשר יש מוצר בעגלה
   useEffect(() => {
@@ -388,8 +332,8 @@ export default function ShoppingList() {
     }
   };
 
-  // מחיקת פריט
-  const handleDeleteItem = async (id: string) => {
+  // מחיקת פריט - עם memoization לביצועים
+  const handleDeleteItem = useCallback(async (id: string) => {
     if (!user) return;
 
     try {
@@ -421,10 +365,10 @@ export default function ShoppingList() {
     } catch (error) {
       console.error('שגיאה במחיקת פריט:', error);
     }
-  };
+  }, [user, items, loadHistory]);
 
-  // עדכון סטטוס פריט
-  const handleToggleStatus = async (id: string, status: Item['status']) => {
+  // עדכון סטטוס פריט - עם memoization לביצועים
+  const handleToggleStatus = useCallback(async (id: string, status: Item['status']) => {
     if (!user) return;
     
     try {
@@ -444,13 +388,13 @@ export default function ShoppingList() {
     } catch (error) {
       console.error('שגיאה בעדכון סטטוס:', error);
     }
-  };
+  }, [user]);
 
-  // פתיחת מודל עריכת כמות
-  const handleEditQuantity = (item: Item) => {
+  // פתיחת מודל עריכת כמות - עם memoization לביצועים
+  const handleEditQuantity = useCallback((item: Item) => {
     setSelectedItem(item);
     setIsEditQuantityModalOpen(true);
-  };
+  }, []);
 
   // עדכון כמות
   const handleSaveQuantity = async (id: string, newQuantity: number) => {
@@ -635,8 +579,10 @@ export default function ShoppingList() {
     }
   };
 
-  // חישוב סטטיסטיקות קניות
-  const getShoppingStats = () => {
+  // חישוב סטטיסטיקות קניות - עם memoization לביצועים
+  const stats = useMemo(() => {
+    console.log('🧮 מחשב סטטיסטיקות קניות...');
+    
     // פריטים פעילים הם אלה שלא במצב purchased
     const activeItems = items.filter(item => item.status !== 'purchased');
     const totalItems = activeItems.length;
@@ -658,12 +604,10 @@ export default function ShoppingList() {
       itemsPurchased,
       progress: totalItems > 0 ? ((itemsInCart + itemsMissing + itemsPartial) / totalItems) * 100 : 0
     };
-  };
+  }, [items]);
 
-  const stats = getShoppingStats();
-
-  // חישוב נתונים לגרף פס
-  const getBarChartData = () => {
+  // חישוב נתונים לגרף פס - עם memoization לביצועים
+  const barChartData = useMemo(() => {
     const segments = [
       { 
         value: stats.itemsInCart, 
@@ -693,37 +637,37 @@ export default function ShoppingList() {
 
     // מחזיר רק את מקטעי הגרף שיש בהם ערך
     return segments.filter(segment => segment.value > 0);
-  };
+  }, [stats]);
 
-  const barChartData = getBarChartData();
-
-  // מיון פריטים לפי סטטוס
-  const sortedItems = [...items].filter(item => item.status !== 'purchased').sort((a, b) => {
-    if (isShoppingActive) {
-      // כאשר הקניות פעילות, סדר שונה - פריטים בהמתנה מוצגים ראשונים
-      if (a.status === 'pending' && b.status !== 'pending') return -1;
-      if (a.status !== 'pending' && b.status === 'pending') return 1;
-    } else {
-      // סדר רגיל - מיון לפי סטטוס
-      // פריטים בהמתנה בהתחלה
-      if (a.status === 'pending' && b.status !== 'pending') return -1;
-      if (a.status !== 'pending' && b.status === 'pending') return 1;
+  // מיון פריטים לפי סטטוס - עם memoization לביצועים
+  const sortedItems = useMemo(() => {
+    return [...items].filter(item => item.status !== 'purchased').sort((a, b) => {
+      if (isShoppingActive) {
+        // כאשר הקניות פעילות, סדר שונה - פריטים בהמתנה מוצגים ראשונים
+        if (a.status === 'pending' && b.status !== 'pending') return -1;
+        if (a.status !== 'pending' && b.status === 'pending') return 1;
+      } else {
+        // סדר רגיל - מיון לפי סטטוס
+        // פריטים בהמתנה בהתחלה
+        if (a.status === 'pending' && b.status !== 'pending') return -1;
+        if (a.status !== 'pending' && b.status === 'pending') return 1;
+        
+        // אחר כך פריטים חלקיים
+        if (a.status === 'partial' && b.status !== 'partial') return -1;
+        if (a.status !== 'partial' && b.status === 'partial') return 1;
+        
+        // אחר כך פריטים חסרים
+        if (a.status === 'missing' && b.status !== 'missing') return -1;
+        if (a.status !== 'missing' && b.status === 'missing') return 1;
+        
+        // אחר כך פריטים בעגלה
+        if (a.status === 'inCart' && b.status !== 'inCart') return -1;
+        if (a.status !== 'inCart' && b.status === 'inCart') return 1;
+      }
       
-      // אחר כך פריטים חלקיים
-      if (a.status === 'partial' && b.status !== 'partial') return -1;
-      if (a.status !== 'partial' && b.status === 'partial') return 1;
-      
-      // אחר כך פריטים חסרים
-      if (a.status === 'missing' && b.status !== 'missing') return -1;
-      if (a.status !== 'missing' && b.status === 'missing') return 1;
-      
-      // אחר כך פריטים בעגלה
-      if (a.status === 'inCart' && b.status !== 'inCart') return -1;
-      if (a.status !== 'inCart' && b.status === 'inCart') return 1;
-    }
-    
-    return 0;
-  });
+      return 0;
+    });
+  }, [items, isShoppingActive]);
   
   // התצוגה הראשית מציגה רק פריטים שלא purchased
   const displayItems = sortedItems;
@@ -828,10 +772,7 @@ export default function ShoppingList() {
         }, delay);
       }
       
-      // מחכים גם לטעינה מחדש של הנתונים הרגילים
-      setTimeout(async () => {
-        await loadUserData();
-      }, 500);
+      // onSnapshot יטפל באופן אוטומטי בעדכון הנתונים
       
     } catch (error) {
       console.error('שגיאה בעיבוד פריטים שנרכשו:', error);
@@ -888,8 +829,7 @@ export default function ShoppingList() {
       )
     );
     
-    // טעינה מחדש
-    await loadUserData();
+    // onSnapshot יטפל באופן אוטומטי בעדכון הנתונים
     await loadHistory();
   };
 

@@ -7,6 +7,7 @@ import ShoppingList from './components/ShoppingList';
 import Vouchers from './components/Vouchers';
 import { ScrollText, Receipt, BarChart3, Wallet } from "lucide-react";
 import { HouseholdProvider } from './contexts/HouseholdContext';
+import { VouchersProvider } from './contexts/VouchersContext';
 import { HouseholdSwitcherModal } from './components/household/HouseholdSwitcherModal';
 import Stats from './components/Stats';
 import RedeemVouchers from './components/VoucherOptimizer';
@@ -91,20 +92,22 @@ function App() {
 
   return (
     <HouseholdProvider>
-      <Router>
-        <div dir="rtl" className="min-h-screen bg-gray-50">
-          <main className="pb-20">
-            <Routes>
-              <Route path="/" element={<ShoppingList />} />
-              <Route path="/vouchers" element={<Vouchers />} />
-              <Route path="/stats" element={<Stats />} />
-              <Route path="/redeem" element={<RedeemVouchers />} />
-            </Routes>
-          </main>
-          <BottomNavbar />
-          <HouseholdSwitcherModal isOpen={isSwitcherOpen} onClose={() => setSwitcherOpen(false)} />
-        </div>
-      </Router>
+      <VouchersProvider>
+        <Router>
+          <div dir="rtl" className="min-h-screen bg-gray-50">
+            <main className="pb-20">
+              <Routes>
+                <Route path="/" element={<ShoppingList />} />
+                <Route path="/vouchers" element={<Vouchers />} />
+                <Route path="/stats" element={<Stats />} />
+                <Route path="/redeem" element={<RedeemVouchers />} />
+              </Routes>
+            </main>
+            <BottomNavbar />
+            <HouseholdSwitcherModal isOpen={isSwitcherOpen} onClose={() => setSwitcherOpen(false)} />
+          </div>
+        </Router>
+      </VouchersProvider>
     </HouseholdProvider>
   );
 }

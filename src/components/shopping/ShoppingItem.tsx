@@ -11,7 +11,7 @@ interface ShoppingItemProps {
   onUploadImage: (file: File, itemId: string) => Promise<string>;
 }
 
-export const ShoppingItem: React.FC<ShoppingItemProps> = ({ 
+export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({ 
   item, 
   onDelete, 
   onEditQuantity, 
@@ -214,7 +214,7 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = ({
       </div>
     </div>
   );
-}; 
+}); 
 
 // הוספת סגנון אנימציה באמצעות CSS
 const styleElement = document.createElement('style');

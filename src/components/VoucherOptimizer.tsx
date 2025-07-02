@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { vouchersService } from '../services/firebase';
-import { useHousehold } from '../contexts/HouseholdContext';
+import { useVouchers } from '../contexts/VouchersContext';
 import { Voucher } from '../types/vouchers';
 import { X, CheckCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 
@@ -49,8 +49,7 @@ function computeOptimal(target: number, values: number[], counts: Record<number,
 
 export default function RedeemVouchers() {
   const [user] = useAuthState(auth);
-  const { selectedHousehold } = useHousehold();
-  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const { vouchers: allVouchers, loading } = useVouchers();
   const [stores, setStores] = useState<string[]>([]);
   const [selectedStore, setSelectedStore] = useState<string>('');
   const [target, setTarget] = useState('');
@@ -63,27 +62,28 @@ export default function RedeemVouchers() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [usedList, setUsedList] = useState<Voucher[]>([]);
 
+  // סינון שוברים לסופרמרקט בלבד - עם memoization לביצועים
+  const vouchers = useMemo(() => {
+    return allVouchers.filter(v => 
+      (v.category || 'general') === 'supermarket' && 
+      (v.remainingAmount ?? v.amount) > 0
+    );
+  }, [allVouchers]);
+
   useEffect(() => {
-    const load = async () => {
-      if (!user) return;
-      let list: Voucher[] = [];
-      if (selectedHousehold) {
-        list = await vouchersService.getHouseholdVouchers(selectedHousehold.id, 'desc');
-      } else {
-        list = await vouchersService.getVouchers(user.uid, 'desc');
-      }
-      const sup = list.filter(v => (v.category || 'general') === 'supermarket' && (v.remainingAmount ?? v.amount) > 0);
-      setVouchers(sup);
-      const uniqueStores = Array.from(new Set(sup.map(v => v.storeName)));
+    if (!loading && vouchers.length > 0) {
+      const uniqueStores = Array.from(new Set(vouchers.map(v => v.storeName)));
       setStores(uniqueStores);
       setSelectedStore(prev => prev || uniqueStores[0] || '');
-    };
-    load();
-  }, [user, selectedHousehold]);
+    }
+  }, [vouchers, loading]);
 
-  const handleCalc = () => {
+  const handleCalc = useCallback(() => {
     const tgt = Number(target);
     if (!tgt || tgt <= 0) return;
+    
+    console.log('🧮 מחשב אופטימיזציה לשוברים...');
+    
     const counts: Record<number, number> = {};
     vouchers.filter(v => v.storeName === selectedStore).forEach(v => {
       const val = v.remainingAmount ?? v.amount;
@@ -92,6 +92,7 @@ export default function RedeemVouchers() {
     const values = Object.keys(counts).map(Number).sort((a, b) => a - b);
     const res = computeOptimal(tgt, values, counts);
     setResult(res);
+    
     // calculate remaining
     const rem: Record<number, number> = { ...counts };
     Object.entries(res.used).forEach(([valStr, cnt]) => {
@@ -100,11 +101,16 @@ export default function RedeemVouchers() {
       if (rem[val] === 0) delete rem[val];
     });
     setRemainingMap(rem);
-  };
+    
+    console.log('✅ אופטימיזציה הושלמה');
+  }, [target, vouchers, selectedStore]);
 
-  // בניית רשימת השוברים עבור האשף לפי סדר ההמלצה (ערך גבוה -> נמוך)
-  const buildWizardList = (): Voucher[] => {
+  // בניית רשימת השוברים עבור האשף לפי סדר ההמלצה (ערך גבוה -> נמוך) - עם memoization
+  const buildWizardList = useMemo((): Voucher[] => {
     if (!result) return [];
+    
+    console.log('📋 בונה רשימת שוברים לאשף...');
+    
     // נעתיק מפת ספירה זמנית
     const needed: Record<number, number> = { ...result.used };
     const orderedVals = Object.keys(needed).map(Number).sort((a, b) => b - a);
@@ -120,17 +126,16 @@ export default function RedeemVouchers() {
         });
     });
     return list;
-  };
+  }, [result, vouchers, selectedStore]);
 
-  const startWizard = () => {
-    const list = buildWizardList();
-    if (list.length === 0) return;
-    setWizardVouchers(list);
+  const startWizard = useCallback(() => {
+    if (buildWizardList.length === 0) return;
+    setWizardVouchers(buildWizardList);
     setWizardActive(true);
     setWizIdx(0);
     setDoneCount(0);
     setUsedList([]);
-  };
+  }, [buildWizardList]);
 
   const currentVoucher = wizardVouchers[wizIdx];
 

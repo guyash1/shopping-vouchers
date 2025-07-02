@@ -12,6 +12,16 @@ interface HouseholdContextType {
   refreshHouseholds: () => Promise<void>;
 }
 
+// Cache types and constants
+interface HouseholdCache {
+  households: Household[];
+  timestamp: number;
+  userId: string;
+}
+
+const CACHE_KEY = 'households_cache';
+const CACHE_TTL = 5 * 60 * 1000; // 5 דקות במילישניות
+
 const HouseholdContext = createContext<HouseholdContextType | undefined>(undefined);
 
 export function HouseholdProvider({ children }: { children: ReactNode }) {
@@ -19,16 +29,82 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
   const [households, setHouseholds] = useState<Household[]>([]);
   const [selectedHousehold, setSelectedHouseholdState] = useState<Household | null>(null);
 
-  // טעינת משקי בית של המשתמש
-  const loadHouseholds = async () => {
+  // קריאת cache מהlocalStorage
+  const getCachedHouseholds = (userId: string): Household[] | null => {
+    try {
+      const cacheData = localStorage.getItem(CACHE_KEY);
+      if (!cacheData) return null;
+
+      const cache: HouseholdCache = JSON.parse(cacheData);
+      
+      // בדיקת תוקף הcache
+      const now = Date.now();
+      const isValid = cache.userId === userId && 
+                     cache.timestamp && 
+                     (now - cache.timestamp) < CACHE_TTL;
+
+      if (isValid) {
+        console.log('🎯 טענו משקי בית מהcache (חיסכון בקריאת Firestore)');
+        return cache.households;
+      } else {
+        // מחיקת cache שתפג
+        localStorage.removeItem(CACHE_KEY);
+        return null;
+      }
+    } catch (error) {
+      console.error('שגיאה בקריאת cache:', error);
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+  };
+
+  // שמירת households בcache
+  const setCachedHouseholds = (households: Household[], userId: string) => {
+    try {
+      const cache: HouseholdCache = {
+        households,
+        timestamp: Date.now(),
+        userId
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+      console.log('💾 שמרנו משקי בית בcache');
+    } catch (error) {
+      console.error('שגיאה בשמירת cache:', error);
+    }
+  };
+
+  // טעינת משקי בית של המשתמש עם cache
+  const loadHouseholds = async (forceRefresh = false) => {
     if (!user) {
       setHouseholds([]);
       return;
     }
+
     try {
+      // קודם ננסה לטעון מהcache (אלא אם כן נדרש refresh)
+      if (!forceRefresh) {
+        const cachedHouseholds = getCachedHouseholds(user.uid);
+        if (cachedHouseholds) {
+          setHouseholds(cachedHouseholds);
+          // קביעה ראשונית של משק הבית הנבחר
+          const savedId = localStorage.getItem('selectedHouseholdId');
+          const initial = savedId
+            ? cachedHouseholds.find((h: Household) => h.id === savedId) || (cachedHouseholds.length > 0 ? cachedHouseholds[0] : null)
+            : cachedHouseholds.length > 0 ? cachedHouseholds[0] : null;
+          setSelectedHouseholdState(initial);
+          return; // יציאה כאן - השתמשנו בcache
+        }
+      }
+
+      // אם אין cache או נדרש refresh - טוען מהשרת
+      console.log('🔄 טוען משקי בית מהשרת...');
       const hh = await householdService.getUserHouseholds(user.uid);
       setHouseholds(hh);
-      // קביעה ראשונית של משק הבית הנבחר (לפי localStorage או הראשון ברשימה)
+      
+      // שמירה בcache
+      setCachedHouseholds(hh, user.uid);
+
+      // קביעה ראשונית של משק הבית הנבחר
       const savedId = localStorage.getItem('selectedHouseholdId');
       const initial = savedId
         ? hh.find((h: Household) => h.id === savedId) || (hh.length > 0 ? hh[0] : null)
@@ -54,12 +130,17 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // פונקציה לreiresh עם ניקוי cache
+  const refreshHouseholds = async () => {
+    await loadHouseholds(true); // forceRefresh = true
+  };
+
   const value: HouseholdContextType = {
     households,
     selectedHousehold,
     personalMode: selectedHousehold === null,
     setSelectedHousehold,
-    refreshHouseholds: loadHouseholds,
+    refreshHouseholds,
   };
 
   return (

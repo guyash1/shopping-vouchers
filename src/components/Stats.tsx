@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -11,8 +11,7 @@ import {
 } from 'chart.js';
 import { auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { vouchersService } from '../services/firebase';
-import { useHousehold } from '../contexts/HouseholdContext';
+import { useVouchers } from '../contexts/VouchersContext';
 import { Voucher } from '../types/vouchers';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
@@ -29,30 +28,7 @@ const HEB_CAT: Record<string, string> = {
 
 export default function Stats() {
   const [user] = useAuthState(auth);
-  const { selectedHousehold } = useHousehold();
-  const [loading, setLoading] = useState(true);
-  const [vouchers, setVouchers] = useState<Voucher[]>([]);
-
-  useEffect(() => {
-    const load = async () => {
-      if (!user) return;
-      setLoading(true);
-      try {
-        let fetchedVouchers: Voucher[] = [];
-        if (selectedHousehold) {
-          fetchedVouchers = await vouchersService.getHouseholdVouchers(selectedHousehold.id, 'desc');
-        } else {
-          fetchedVouchers = await vouchersService.getVouchers(user.uid, 'desc');
-        }
-        setVouchers(fetchedVouchers);
-      } catch (e) {
-        console.error('Error loading stats', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [user, selectedHousehold]);
+  const { vouchers, loading, error } = useVouchers();
 
   // --- Voucher stats ---
   // Data per category -> pie per stores
