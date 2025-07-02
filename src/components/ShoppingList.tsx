@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ShoppingCart, LogOut, HelpCircle, Home, Users } from "lucide-react";
+import { useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp, deleteField, getDoc, onSnapshot, orderBy } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -22,6 +23,7 @@ export default function ShoppingList() {
   const { selectedHousehold } = useHousehold();
   const [user] = useAuthState(auth);
   const { isActive } = usePageVisibility({ inactivityTimeout: 10, enableInactivityTimeout: true });
+  const location = useLocation();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -42,19 +44,28 @@ export default function ShoppingList() {
 
   // הסרת הכפילות: onSnapshot למטה מספק גם טעינה ראשונית וגם עדכונים בזמן אמת
 
-  // מאזין בזמן-אמת לשינויים ברשימת הפריטים עם Page Visibility אופטימיזציה
+  // בדיקה שאנחנו בטאב קניות
+  const isShoppingRoute = location.pathname === '/';
+
+  // מאזין בזמן-אמת לשינויים ברשימת הפריטים עם Page Visibility + Route אופטימיזציה
   useEffect(() => {
     if (!user || !isActive) {
       // אם אין משתמש או הטאב לא פעיל - לא מתחיל onSnapshot
       if (!isActive && !user) {
-        console.log('🔇 onSnapshot עוצר - אין משתמש וטאב לא פעיל');
+        console.log('🔇 Shopping onSnapshot עוצר - אין משתמש וטאב לא פעיל');
       } else if (!isActive) {
-        console.log('🔇 onSnapshot עוצר - טאב לא פעיל (חיסכון בקריאות Firestore)');
+        console.log('🔇 Shopping onSnapshot עוצר - טאב לא פעיל (חיסכון בקריאות Firestore)');
       }
       return;
     }
 
-    console.log('🔊 onSnapshot מתחיל - טאב פעיל');
+    if (!isShoppingRoute) {
+      console.log('🔇 Shopping onSnapshot עוצר - לא בטאב קניות (חיסכון בקריאות Firestore)');
+      setLoading(false);
+      return;
+    }
+
+    console.log('🔊 Shopping onSnapshot מתחיל - בטאב קניות ופעיל');
 
     let q;
     if (selectedHousehold) {
@@ -98,10 +109,10 @@ export default function ShoppingList() {
     });
 
     return () => {
-      console.log('🔇 onSnapshot מנותק');
+      console.log('🔇 Shopping onSnapshot מנותק');
       unsubscribe();
     };
-  }, [user, selectedHousehold, isActive]);
+  }, [user, selectedHousehold, isActive, isShoppingRoute]);
 
   // הפעלת מצב קניות אוטומטי כאשר יש מוצר בעגלה
   useEffect(() => {

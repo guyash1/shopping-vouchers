@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import { useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { useHousehold } from './HouseholdContext';
@@ -19,11 +20,16 @@ export function VouchersProvider({ children }: { children: ReactNode }) {
   const [user] = useAuthState(auth);
   const { selectedHousehold } = useHousehold();
   const { isActive } = usePageVisibility({ inactivityTimeout: 10, enableInactivityTimeout: true });
+  const location = useLocation();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // מאזין בזמן-אמת לשוברים עם Page Visibility אופטימיזציה
+  // רק טאבים שצריכים שוברים
+  const voucherRelevantRoutes = ['/vouchers', '/stats', '/redeem'];
+  const isVoucherRoute = voucherRelevantRoutes.includes(location.pathname);
+
+  // מאזין בזמן-אמת לשוברים עם Page Visibility + Route אופטימיזציה
   useEffect(() => {
     if (!user) {
       setVouchers([]);
@@ -36,7 +42,13 @@ export function VouchersProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    console.log('🔊 Vouchers onSnapshot מתחיל - טאב פעיל');
+    if (!isVoucherRoute) {
+      console.log('🔇 Vouchers onSnapshot עוצר - לא בטאב שוברים (חיסכון בקריאות Firestore)');
+      setLoading(false);
+      return;
+    }
+
+    console.log('🔊 Vouchers onSnapshot מתחיל - בטאב שוברים ופעיל');
     setLoading(true);
     setError(null);
 
@@ -148,7 +160,7 @@ export function VouchersProvider({ children }: { children: ReactNode }) {
       console.log('🔇 Vouchers onSnapshot מנותק');
       unsubscribe();
     };
-  }, [user, selectedHousehold, isActive]);
+  }, [user, selectedHousehold, isActive, isVoucherRoute]);
 
   // פונקציית רענון ידני (למקרה שצריך)
   const refreshVouchers = () => {

@@ -91,9 +91,9 @@ function App() {
   }
 
   return (
-    <HouseholdProvider>
-      <VouchersProvider>
-        <Router>
+    <Router>
+      <HouseholdProvider>
+        <VouchersProvider>
           <div dir="rtl" className="min-h-screen bg-gray-50">
             <main className="pb-20">
               <Routes>
@@ -106,9 +106,9 @@ function App() {
             <BottomNavbar />
             <HouseholdSwitcherModal isOpen={isSwitcherOpen} onClose={() => setSwitcherOpen(false)} />
           </div>
-        </Router>
-      </VouchersProvider>
-    </HouseholdProvider>
+        </VouchersProvider>
+      </HouseholdProvider>
+    </Router>
   );
 }
 

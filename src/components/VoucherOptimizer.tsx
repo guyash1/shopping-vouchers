@@ -249,58 +249,79 @@ export default function RedeemVouchers() {
 
       {/* אשף המימוש */}
       {wizardActive && currentVoucher && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={finishWizard}>
-          <div className="relative w-full max-w-lg bg-white rounded-lg p-4 flex flex-col items-center" onClick={e => e.stopPropagation()}>
-            <button className="absolute top-2 right-2 text-gray-600" onClick={finishWizard}>
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[60] p-4 pb-24 overflow-hidden" onClick={finishWizard}>
+          <div 
+            className="relative w-full max-w-2xl max-h-[85vh] my-auto overflow-y-auto flex flex-col items-center scrollbar-hide" 
+            onClick={e => e.stopPropagation()}
+          >
+            <button className="absolute top-4 right-4 bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors z-[70] shadow-lg" onClick={finishWizard}>
               <X className="w-6 h-6" />
             </button>
 
-            <h2 className="text-3xl font-bold text-center mb-3">{currentVoucher.storeName}</h2>
-            {currentVoucher.isPartial ? (
-              <p className="text-center mb-4 text-xl">נותרו: ₪{(currentVoucher.remainingAmount ?? 0).toFixed(2)} מתוך ₪{currentVoucher.amount.toFixed(2)}</p>
-            ) : (
-              <p className="text-center mb-4 text-xl">שובר על סך ₪{currentVoucher.amount.toFixed(2)}</p>
-            )}
+            {/* כותרת השובר - עם רקע כהה כמו במודל הגדלת תמונה */}
+            <div className="w-full text-center mb-4 px-2">
+              <h2 className="text-3xl font-bold text-white drop-shadow mb-2">{currentVoucher.storeName}</h2>
+              {currentVoucher.isPartial ? (
+                <p className="text-lg text-gray-200">נותרו: ₪{(currentVoucher.remainingAmount ?? 0).toFixed(2)} מתוך ₪{currentVoucher.amount.toFixed(2)}</p>
+              ) : (
+                <p className="text-lg text-gray-200">שובר על סך ₪{currentVoucher.amount.toFixed(2)}</p>
+              )}
+            </div>
 
-            {/* תמונה + חצים */}
+            {/* תמונה + חצים - תמונה גדולה יותר */}
             <div className="relative w-full mb-6">
               {currentVoucher.imageUrl && (
-                <img src={currentVoucher.imageUrl} alt="ברקוד" className="w-full max-h-[60vh] object-contain" />
+                <img 
+                  src={currentVoucher.imageUrl} 
+                  alt="ברקוד שובר" 
+                  className="w-full rounded-lg shadow-lg"
+                  style={{ maxHeight: '75vh', objectFit: 'contain' }}
+                />
               )}
               {/* חץ שמאל */}
               {wizIdx > 0 && (
-                <button onClick={goPrev} className="absolute left-0 top-1/2 -translate-y-1/2 p-2 bg-white/70 rounded-full shadow">
-                  <ChevronLeft className="w-8 h-8" />
+                <button onClick={goPrev} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors">
+                  <ChevronLeft className="w-6 h-6 text-gray-800" />
                 </button>
               )}
               {/* חץ ימין */}
               {wizIdx < wizardVouchers.length - 1 && (
-                <button onClick={proceedNext} className="absolute right-0 top-1/2 -translate-y-1/2 p-2 bg-white/70 rounded-full shadow">
-                  <ChevronRight className="w-8 h-8" />
+                <button onClick={proceedNext} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors">
+                  <ChevronRight className="w-6 h-6 text-gray-800" />
                 </button>
               )}
             </div>
 
-            <div className="flex justify-center mb-6">
+            {/* כפתור מימוש */}
+            <div className="flex justify-center mb-6 mt-6">
               <button
                 onClick={handleWizardToggleUsed}
-                className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700"
+                className="flex items-center gap-2 px-8 py-3 bg-green-600 text-white rounded-lg shadow-lg hover:bg-green-700 transition-colors font-medium text-lg"
               >
                 <CheckCircle className="w-6 h-6" />
                 <span>{currentVoucher.isUsed ? 'הסר סימון' : 'מומש'}</span>
               </button>
             </div>
 
-            <span className="text-lg font-medium">{wizIdx + 1} / {wizardVouchers.length}</span>
+            {/* מחוון התקדמות */}
+            <div className="text-center mb-4">
+              <span className="text-lg font-medium text-white bg-black/30 px-4 py-2 rounded-full">
+                {wizIdx + 1} / {wizardVouchers.length}
+              </span>
+            </div>
           </div>
         </div>
       )}
 
       {/* סיכום */}
       {summaryOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={()=>setSummaryOpen(false)}>
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full" onClick={e=>e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-4 text-center">המימוש הושלם!</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[60] p-4 pb-24 overflow-hidden" onClick={()=>setSummaryOpen(false)}>
+          <div className="relative bg-white rounded-lg p-6 max-w-sm w-full max-h-[85vh] overflow-y-auto scrollbar-hide shadow-2xl" onClick={e=>e.stopPropagation()}>
+            <button className="absolute top-2 right-2 bg-gray-100 rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors z-[70]" onClick={()=>setSummaryOpen(false)}>
+              <X className="w-5 h-5" />
+            </button>
+            
+            <h3 className="text-xl font-bold mb-4 text-center pr-8">המימוש הושלם!</h3>
             <p className="mb-4 text-center">מומשו {usedList.length} שוברים:</p>
             <ul className="text-right mb-4 max-h-40 overflow-y-auto pr-4 list-disc">
               {usedList.map(v=> (
@@ -308,15 +329,15 @@ export default function RedeemVouchers() {
               ))}
             </ul>
             <p className="text-center mb-4">האם למחוק את כל השוברים שמומשו?</p>
-            <div className="flex justify-center gap-4">
-              <button onClick={()=>{setSummaryOpen(false); window.location.reload();}} className="px-4 py-2 bg-gray-300 rounded">לא</button>
+            <div className="flex justify-center gap-4 mt-6 mb-4">
+              <button onClick={()=>{setSummaryOpen(false); window.location.reload();}} className="px-6 py-3 bg-gray-300 rounded-lg text-gray-700 hover:bg-gray-400 transition-colors font-medium shadow-lg">לא</button>
               <button onClick={async ()=>{
                 for (const v of usedList) {
                   await vouchersService.deleteVoucher(v.id);
                 }
                 setSummaryOpen(false);
                 window.location.reload();
-              }} className="px-4 py-2 bg-red-600 text-white rounded">מחק</button>
+              }} className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium shadow-lg">מחק</button>
             </div>
           </div>
         </div>

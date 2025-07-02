@@ -208,21 +208,33 @@ export function HistoryModal({
       <Modal
         isOpen={!!selectedImage}
         onRequestClose={() => setSelectedImage(null)}
-        className="absolute inset-8 bottom-16 sm:inset-16 md:inset-32 bg-black rounded-lg outline-none overflow-hidden flex items-center justify-center"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-75 z-50"
+        className="fixed inset-0 flex items-center justify-center z-[60] p-4 pb-24 overflow-hidden"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-80 z-[60]"
       >
-        <button
-          onClick={() => setSelectedImage(null)}
-          className="absolute top-2 right-2 p-1.5 bg-white rounded-full"
-          aria-label="סגור"
-        >
-          <X className="w-4 h-4" />
-        </button>
-        <img
-          src={selectedImage || ''}
-          alt="תמונה מוגדלת"
-          className="max-w-full max-h-full object-contain"
-        />
+        <div className="relative w-full max-w-2xl max-h-[85vh] my-auto overflow-y-auto flex flex-col items-center scrollbar-hide">
+          <button
+            onClick={() => setSelectedImage(null)}
+            className="absolute top-4 right-4 bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors z-[70] shadow-lg"
+            aria-label="סגור תמונה"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          
+          {/* כותרת */}
+          <div className="w-full text-center mb-4 px-2">
+            <h3 className="text-2xl font-bold text-white drop-shadow">תמונת מוצר</h3>
+          </div>
+
+          {/* תמונה מוגדלת */}
+          <div className="w-full mb-6">
+            <img
+              src={selectedImage || ''}
+              alt="תמונה מוגדלת"
+              className="w-full rounded-lg shadow-lg"
+              style={{ maxHeight: '75vh', objectFit: 'contain' }}
+            />
+          </div>
+        </div>
       </Modal>
     </Modal>
   );

@@ -4,7 +4,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { 
     Plus, Users, X, Search, 
     ShoppingCart, Utensils, Droplet, ShoppingBag, 
-    Gift, Filter, ChevronDown, Bell, Settings,
+    Gift, Filter, ChevronDown,
     List, CheckCircle, Trash2, RotateCcw
 } from 'lucide-react';
 import { Voucher } from '../types/vouchers';
@@ -74,6 +74,24 @@ export default function Vouchers() {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [activeDropdown]);
+
+    // נעילת גלילת הרקע כשמודל התמונה פתוח
+    useEffect(() => {
+        const isModalOpen = selectedVoucher && selectedVoucher.imageUrl;
+        if (isModalOpen) {
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+        }
+        
+        // נקוי בסגירת הקומפוננטה
+        return () => {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+        };
+    }, [selectedVoucher]);
 
     // הוסר מאזין - VouchersContext מטפל בזה עכשיו
 
@@ -704,16 +722,16 @@ export default function Vouchers() {
             {/* תצוגת תמונה מוגדלת */}
             {selectedVoucher && selectedVoucher.imageUrl && (
                 <div 
-                    className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 pb-16 overflow-hidden"
+                    className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[60] p-4 pb-24 overflow-hidden"
                     onClick={() => setSelectedVoucher(null)}
                 >
                     <div 
-                        className="relative w-full max-w-2xl max-h-[90vh] my-auto overflow-y-auto flex flex-col items-center"
+                        className="relative w-full max-w-2xl max-h-[85vh] my-auto overflow-y-auto flex flex-col items-center scrollbar-hide"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button
                             onClick={() => setSelectedVoucher(null)}
-                            className="absolute top-4 right-4 bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors"
+                            className="absolute top-4 right-4 bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors z-[70] shadow-lg"
                             aria-label="סגור תמונה"
                         >
                             <X className="w-6 h-6" />
@@ -737,8 +755,8 @@ export default function Vouchers() {
                             style={{ maxHeight: '80vh', objectFit: 'contain' }}
                         />
 
-                        {/* כפתורי פעולה */}
-                        <div className="flex justify-center gap-4 mt-4">
+                        {/* כפתורי פעולה - עם מרווח נוסף מהתחתית */}
+                        <div className="flex justify-center gap-4 mt-6 mb-4">
                             {selectedVoucher.isUsed ? (
                                 <button
                                     onClick={() => {
@@ -747,7 +765,7 @@ export default function Vouchers() {
                                            setSelectedVoucher({ ...selectedVoucher, isUsed: !selectedVoucher.isUsed });
                                         }
                                     }}
-                                    className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg text-lg shadow hover:bg-yellow-600 transition-colors"
+                                    className="flex items-center gap-2 px-6 py-3 bg-yellow-500 text-white rounded-lg text-lg shadow-lg hover:bg-yellow-600 transition-colors font-medium"
                                 >
                                     <RotateCcw className="w-5 h-5" />
                                     <span>שחזר</span>
@@ -760,7 +778,7 @@ export default function Vouchers() {
                                            setSelectedVoucher({ ...selectedVoucher, isUsed: !selectedVoucher.isUsed });
                                         }
                                     }}
-                                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-lg shadow hover:bg-green-700 transition-colors"
+                                    className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg text-lg shadow-lg hover:bg-green-700 transition-colors font-medium"
                                 >
                                     <CheckCircle className="w-5 h-5" />
                                     <span>מומש</span>
@@ -771,7 +789,7 @@ export default function Vouchers() {
                                     handleDeleteVoucher(selectedVoucher);
                                     setSelectedVoucher(null);
                                 }}
-                                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-lg shadow hover:bg-red-700 transition-colors"
+                                className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg text-lg shadow-lg hover:bg-red-700 transition-colors font-medium"
                             >
                                 <Trash2 className="w-5 h-5" />
                                 <span>מחק</span>
@@ -781,25 +799,7 @@ export default function Vouchers() {
                 </div>
             )}
 
-            {/* טאב בר תחתון */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-md flex items-center justify-around p-2 z-40">
-                <button className="flex flex-col items-center p-2 text-blue-600">
-                    <Gift className="w-6 h-6" />
-                    <span className="text-xs mt-1">שוברים</span>
-                </button>
-                <button className="flex flex-col items-center p-2 text-gray-500">
-                    <ShoppingCart className="w-6 h-6" />
-                    <span className="text-xs mt-1">קניות</span>
-                </button>
-                <button className="flex flex-col items-center p-2 text-gray-500">
-                    <Bell className="w-6 h-6" />
-                    <span className="text-xs mt-1">התראות</span>
-                </button>
-                <button className="flex flex-col items-center p-2 text-gray-500">
-                    <Settings className="w-6 h-6" />
-                    <span className="text-xs mt-1">הגדרות</span>
-                </button>
-            </div>
+            {/* הטאב בר הישן מוסר - משתמשים בBottomNavbar מה-App.tsx */}
         </div>
     );
 } 
