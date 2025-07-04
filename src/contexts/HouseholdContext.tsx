@@ -3,6 +3,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase';
 import { householdService } from '../services/firebase';
 import { Household } from '../types/household';
+import { getStorageItem, setStorageItem, removeStorageItem, getStorageItemParsed } from '../utils/secureStorage';
 
 interface HouseholdContextType {
   households: Household[];
@@ -29,13 +30,11 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
   const [households, setHouseholds] = useState<Household[]>([]);
   const [selectedHousehold, setSelectedHouseholdState] = useState<Household | null>(null);
 
-  // קריאת cache מהlocalStorage
+  // קריאת cache מהlocalStorage מאובטח
   const getCachedHouseholds = (userId: string): Household[] | null => {
     try {
-      const cacheData = localStorage.getItem(CACHE_KEY);
-      if (!cacheData) return null;
-
-      const cache: HouseholdCache = JSON.parse(cacheData);
+      const cache = getStorageItemParsed<HouseholdCache>(CACHE_KEY);
+      if (!cache) return null;
       
       // בדיקת תוקף הcache
       const now = Date.now();
@@ -48,17 +47,17 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         return cache.households;
       } else {
         // מחיקת cache שתפג
-        localStorage.removeItem(CACHE_KEY);
+        removeStorageItem(CACHE_KEY);
         return null;
       }
     } catch (error) {
       console.error('שגיאה בקריאת cache:', error);
-      localStorage.removeItem(CACHE_KEY);
+      removeStorageItem(CACHE_KEY);
       return null;
     }
   };
 
-  // שמירת households בcache
+  // שמירת households בcache מאובטח
   const setCachedHouseholds = (households: Household[], userId: string) => {
     try {
       const cache: HouseholdCache = {
@@ -66,8 +65,8 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         timestamp: Date.now(),
         userId
       };
-      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-      console.log('💾 שמרנו משקי בית בcache');
+      setStorageItem(CACHE_KEY, cache);
+      console.log('💾 שמרנו משקי בית בcache מאובטח');
     } catch (error) {
       console.error('שגיאה בשמירת cache:', error);
     }
@@ -86,11 +85,11 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         const cachedHouseholds = getCachedHouseholds(user.uid);
         if (cachedHouseholds) {
           setHouseholds(cachedHouseholds);
-          // קביעה ראשונית של משק הבית הנבחר
-          const savedId = localStorage.getItem('selectedHouseholdId');
-          const initial = savedId
-            ? cachedHouseholds.find((h: Household) => h.id === savedId) || (cachedHouseholds.length > 0 ? cachedHouseholds[0] : null)
-            : cachedHouseholds.length > 0 ? cachedHouseholds[0] : null;
+                // קביעה ראשונית של משק הבית הנבחר
+      const savedId = getStorageItem('selectedHouseholdId');
+      const initial = savedId
+        ? cachedHouseholds.find((h: Household) => h.id === savedId) || (cachedHouseholds.length > 0 ? cachedHouseholds[0] : null)
+        : cachedHouseholds.length > 0 ? cachedHouseholds[0] : null;
           setSelectedHouseholdState(initial);
           return; // יציאה כאן - השתמשנו בcache
         }
@@ -105,7 +104,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       setCachedHouseholds(hh, user.uid);
 
       // קביעה ראשונית של משק הבית הנבחר
-      const savedId = localStorage.getItem('selectedHouseholdId');
+      const savedId = getStorageItem('selectedHouseholdId');
       const initial = savedId
         ? hh.find((h: Household) => h.id === savedId) || (hh.length > 0 ? hh[0] : null)
         : hh.length > 0 ? hh[0] : null;
@@ -120,13 +119,13 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // שמירת הבחירה בלוקאל-סטורג׳
+  // שמירת הבחירה בלוקאל-סטורג׳ מאובטח
   const setSelectedHousehold = (household: Household | null) => {
     setSelectedHouseholdState(household);
     if (household) {
-      localStorage.setItem('selectedHouseholdId', household.id);
+      setStorageItem('selectedHouseholdId', household.id);
     } else {
-      localStorage.removeItem('selectedHouseholdId');
+      removeStorageItem('selectedHouseholdId');
     }
   };
 

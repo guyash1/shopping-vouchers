@@ -19,10 +19,18 @@ import { Item } from '../types/shopping';
 import { Voucher } from '../types/vouchers';
 import { Household } from '../types/household';
 
-// פונקציית עזר לאימות קלט
+// פונקציית עזר לאימות קלט - משופרת לאבטחה
 const sanitizeInput = (input: string): string => {
-  // הסרת תווים מסוכנים
-  return input.replace(/<\/?[^>]+(>|$)/g, "");
+  if (!input || typeof input !== 'string') return '';
+  
+  return input
+    .trim()
+    .slice(0, 255) // הגבלת אורך לביטחון
+    .replace(/[<>'"&]/g, '') // הסרת תווים מסוכנים
+    .replace(/javascript:/gi, '') // הסרת JS schemes
+    .replace(/on\w+=/gi, '') // הסרת event handlers
+    .replace(/data:/gi, '') // הסרת data URIs
+    .replace(/vbscript:/gi, ''); // הסרת VBScript
 };
 
 // פונקציה לבדיקת שייכות המשתמש למשק בית
@@ -103,6 +111,11 @@ export const shoppingListService = {
     try {
       if (!itemData.name || !itemData.addedBy) {
         throw new Error('Item name and user ID are required');
+      }
+      
+      // Rate limiting - מקסימום 10 הוספות פריטים לדקה
+      if (!rateLimiter.isAllowed(`addItem:${itemData.addedBy}`, 10, 60000)) {
+        throw new Error('Too many items added. Please wait a moment before adding more items.');
       }
       
       // סניטיזציה של קלט המשתמש
@@ -432,6 +445,11 @@ export const vouchersService = {
       if (!voucherData.storeName) throw new Error('Store name is required');
       if (isNaN(voucherData.amount) || voucherData.amount <= 0) {
         throw new Error('Valid amount is required');
+      }
+      
+      // Rate limiting - מקסימום 5 הוספות שוברים לדקה
+      if (!rateLimiter.isAllowed(`addVoucher:${userId}`, 5, 60000)) {
+        throw new Error('Too many vouchers added. Please wait a moment before adding more vouchers.');
       }
       
       // סניטיזציה של קלט המשתמש
@@ -780,6 +798,72 @@ export const vouchersService = {
   }
 };
 
+// מערכת Rate Limiting לאבטחה
+class RateLimiter {
+  private attempts = new Map<string, number[]>();
+  
+  isAllowed(key: string, limit: number = 5, windowMs: number = 60000): boolean {
+    const now = Date.now();
+    const userAttempts = this.attempts.get(key) || [];
+    
+    // סינון ניסיונות ישנים מחוץ לחלון הזמן
+    const recentAttempts = userAttempts.filter(time => now - time < windowMs);
+    
+    if (recentAttempts.length >= limit) {
+      return false;
+    }
+    
+    // הוספת הניסיון הנוכחי
+    recentAttempts.push(now);
+    this.attempts.set(key, recentAttempts);
+    
+    // ניקוי זיכרון - הסרת entries ישנים
+    if (this.attempts.size > 1000) {
+      Array.from(this.attempts.entries()).forEach(([k, attempts]) => {
+        const recentForKey = attempts.filter((time: number) => now - time < windowMs);
+        if (recentForKey.length === 0) {
+          this.attempts.delete(k);
+        }
+      });
+    }
+    
+    return true;
+  }
+  
+  // איפוס עבור משתמש מסוים (למקרה חירום)
+  reset(key: string): void {
+    this.attempts.delete(key);
+  }
+}
+
+// יצירת instance גלובלי של Rate Limiter
+const rateLimiter = new RateLimiter();
+
+// פונקציית עזר לבדיקת תוכן תמונה - אבטחה מתקדמת
+const validateImageContent = async (file: File): Promise<boolean> => {
+  try {
+    const buffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(buffer);
+    
+    // בדיקת magic bytes עבור פורמטים מותרים
+    const signatures = [
+      [0xFF, 0xD8, 0xFF], // JPEG
+      [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A], // PNG
+      [0x47, 0x49, 0x46, 0x38], // GIF
+      [0x52, 0x49, 0x46, 0x46] // WEBP (starts with RIFF)
+    ];
+    
+    return signatures.some(signature => 
+      signature.every((byte, index) => 
+        index < uint8Array.length && uint8Array[index] === byte
+      )
+    );
+  } catch (error) {
+    console.error('Error validating file content:', error);
+    return false;
+  }
+};
+
 // שירותי אחסון (Storage)
 export const storageService = {
   // העלאת תמונה
@@ -789,16 +873,27 @@ export const storageService = {
         throw new Error('User ID, file, and folder are required');
       }
       
+      // Rate limiting - מקסימום 10 העלאות תמונות לדקה
+      if (!rateLimiter.isAllowed(`uploadImage:${userId}`, 10, 60000)) {
+        throw new Error('Too many images uploaded. Please wait a moment before uploading more images.');
+      }
+      
       // וידוא שסוג הקובץ תקין
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
         throw new Error('Invalid file type. Only JPEG, PNG, GIF and WEBP are allowed');
       }
       
-      // הגבלת גודל קובץ ל-5MB
-      const maxFileSize = 5 * 1024 * 1024; // 5MB
+      // בדיקת תוכן הקובץ (magic bytes) - אבטחה מתקדמת
+      const isValidImage = await validateImageContent(file);
+      if (!isValidImage) {
+        throw new Error('Invalid file content. File may be corrupted or not a valid image.');
+      }
+      
+      // הגבלת גודל קובץ ל-3MB (מחמיר יותר לאבטחה)
+      const maxFileSize = 3 * 1024 * 1024; // 3MB
       if (file.size > maxFileSize) {
-        throw new Error('File too large. Maximum size is 5MB');
+        throw new Error('File too large. Maximum size is 3MB');
       }
       
       // שמירת שם קובץ מאובטח (מניעת path traversal)
@@ -865,6 +960,11 @@ export const householdService = {
         throw new Error('User ID and name are required');
       }
       
+      // Rate limiting - מקסימום 3 יצירות משק בית ל-5 דקות
+      if (!rateLimiter.isAllowed(`createHousehold:${userId}`, 3, 300000)) {
+        throw new Error('Too many households created. Please wait a few minutes before creating another household.');
+      }
+      
       // סניטיזציה של קלט המשתמש
       const sanitizedName = sanitizeInput(name);
       
@@ -914,6 +1014,11 @@ export const householdService = {
     try {
       if (!code || !userId) {
         throw new Error('Code and user ID are required');
+      }
+      
+      // Rate limiting - מקסימום 5 ניסיונות הצטרפות לדקה
+      if (!rateLimiter.isAllowed(`joinHousehold:${userId}`, 5, 60000)) {
+        throw new Error('Too many join attempts. Please wait a moment before trying again.');
       }
       
       // חיפוש משק הבית לפי הקוד

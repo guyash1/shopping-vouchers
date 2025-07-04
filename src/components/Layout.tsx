@@ -1,15 +1,28 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ScrollText, Receipt, BarChart3 } from "lucide-react";
+import InstallPrompt from "./InstallPrompt";
+import { useInstallPrompt } from "../hooks/useInstallPrompt";
 
 const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { isInstallable, isInstalled } = useInstallPrompt();
 
   return (
     <div dir="rtl" className="min-h-screen bg-gray-50">
+      {/* Install Banner - מופיע רק אם ניתן להתקנה */}
+      {isInstallable && !isInstalled && (
+        <InstallPrompt 
+          variant="banner" 
+          position="top" 
+          showOnce={true}
+          className="animate-slide-down"
+        />
+      )}
+      
       <div className="fixed bottom-0 right-0 left-0 bg-white border-t z-50">
         <nav className="max-w-md mx-auto flex justify-around p-2">
           <Link
@@ -45,7 +58,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
       </div>
 
-      <main className="pb-20">{children}</main>
+      <main className={`pb-20 ${isInstallable && !isInstalled ? 'pt-16' : ''}`}>
+        {children}
+      </main>
     </div>
   );
 } 
