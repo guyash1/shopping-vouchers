@@ -13,7 +13,8 @@ root.render(
   </React.StrictMode>
 );
 
-// Service Worker Registration for PWA
+// Service Worker Registration for PWA - מבוטל זמנית
+/*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
@@ -25,6 +26,7 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
+*/
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

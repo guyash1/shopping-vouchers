@@ -1,7 +1,7 @@
 // Service Worker for Shopping Vouchers App
 // עבודה בסיסית עם cache לPWA
 
-const CACHE_NAME = 'shopping-vouchers-v1';
+const CACHE_NAME = 'shopping-vouchers-v2';
 const urlsToCache = [
   '/',
   '/static/js/bundle.js',
@@ -21,8 +21,31 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// העברת בקשות דרך Cache
+// העברת בקשות דרך Cache - עם הגנה על Firebase Auth
 self.addEventListener('fetch', (event) => {
+  // רשימת URLs שלא צריך לcache (Firebase Auth)
+  const skipCacheUrls = [
+    'firebase.googleapis.com',
+    'securetoken.googleapis.com',
+    'identitytoolkit.googleapis.com',
+    'accounts.google.com',
+    'oauth2.googleapis.com',
+    'www.googleapis.com/oauth2',
+    '__/auth/'
+  ];
+  
+  // בדיקה אם זה קשור ל-Firebase Auth
+  const shouldSkipCache = skipCacheUrls.some(url => 
+    event.request.url.includes(url)
+  );
+  
+  // אם זה Firebase Auth - תן לזה לעבור ישירות בלי cache
+  if (shouldSkipCache) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  
+  // אחרת - השתמש בlogic הרגיל
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
