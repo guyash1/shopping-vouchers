@@ -16,8 +16,6 @@ import { AddItemForm } from './shopping/AddItemForm';
 import { shoppingListService, storageService } from '../services/firebase';
 import { useHousehold } from '../contexts/HouseholdContext';
 import { usePageVisibility } from '../utils/usePageVisibility';
-import InstallPrompt from './InstallPrompt';
-import { useInstallPrompt } from '../hooks/useInstallPrompt';
 
 Modal.setAppElement('#root');
 
@@ -26,7 +24,6 @@ export default function ShoppingList() {
   const [user] = useAuthState(auth);
   const { isActive } = usePageVisibility({ inactivityTimeout: 10, enableInactivityTimeout: true });
   const location = useLocation();
-  const { isInstallable, isInstalled } = useInstallPrompt();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -873,15 +870,6 @@ export default function ShoppingList() {
             )}
           </div>
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
-            {/* כפתור התקנה - מוצג רק אם זמין */}
-            {isInstallable && !isInstalled && (
-              <InstallPrompt 
-                variant="button" 
-                className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700"
-                message="התקן"
-              />
-            )}
-            
             <button
             onClick={() => {
               const ev = new CustomEvent('openHouseholdSwitcher');
