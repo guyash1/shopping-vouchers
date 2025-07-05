@@ -37,17 +37,18 @@ export function Auth() {
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
 
-    // זיהוי אם מדובר בדפדפן מובייל שעלול לחסום popups
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
     try {
-      if (isMobile) {
-        // במובייל נשתמש ב-redirect כי popup לא תמיד נתמך
-        await signInWithRedirect(auth, provider);
-      } else {
-        await signInWithPopup(auth, provider);
-      }
+      await signInWithPopup(auth, provider);
     } catch (error: any) {
+      // אם popup נחסם או נסגר – fallback ל-Redirect
+      if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/popup-closed-by-user') {
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectError: any) {
+          console.error('Redirect login failed:', redirectError);
+        }
+      }
       console.error('שגיאת התחברות עם Google:', error);
       const message = error?.code ? `קוד שגיאה: ${error.code}` : 'שגיאה לא ידועה';
       alert(`שגיאה בהתחברות עם Google. ${message}`);
