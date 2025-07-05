@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult
 } from 'firebase/auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Eye, EyeOff, Mail, Lock, LogIn, UserPlus, LogOut } from 'lucide-react';
@@ -34,13 +36,31 @@ export function Auth() {
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
+
+    // זיהוי אם מדובר בדפדפן מובייל שעלול לחסום popups
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
     try {
-      await signInWithPopup(auth, provider);
+      if (isMobile) {
+        // במובייל נשתמש ב-redirect כי popup לא תמיד נתמך
+        await signInWithRedirect(auth, provider);
+      } else {
+        await signInWithPopup(auth, provider);
+      }
     } catch (error) {
       console.error('שגיאת התחברות עם Google:', error);
       alert('שגיאה בהתחברות עם Google. אנא נסה שוב.');
     }
   };
+
+  // טיפול בתוצאה שחוזרת מ-redirect (למובייל)
+  useEffect(() => {
+    getRedirectResult(auth).catch((error) => {
+      if (error) {
+        console.error('שגיאה ב-redirect login:', error);
+      }
+    });
+  }, []);
 
   const handleSignOut = () => {
     signOut(auth);

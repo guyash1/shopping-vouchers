@@ -55,7 +55,7 @@ export default function ShoppingList() {
         console.log('🔇 Shopping onSnapshot עוצר - אין משתמש וטאב לא פעיל');
       } else if (!isActive) {
         console.log('🔇 Shopping onSnapshot עוצר - טאב לא פעיל (חיסכון בקריאות Firestore)');
-      }
+        }
       return;
     }
 
@@ -653,31 +653,31 @@ export default function ShoppingList() {
   // מיון פריטים לפי סטטוס - עם memoization לביצועים
   const sortedItems = useMemo(() => {
     return [...items].filter(item => item.status !== 'purchased').sort((a, b) => {
-      if (isShoppingActive) {
-        // כאשר הקניות פעילות, סדר שונה - פריטים בהמתנה מוצגים ראשונים
-        if (a.status === 'pending' && b.status !== 'pending') return -1;
-        if (a.status !== 'pending' && b.status === 'pending') return 1;
-      } else {
-        // סדר רגיל - מיון לפי סטטוס
-        // פריטים בהמתנה בהתחלה
-        if (a.status === 'pending' && b.status !== 'pending') return -1;
-        if (a.status !== 'pending' && b.status === 'pending') return 1;
-        
-        // אחר כך פריטים חלקיים
-        if (a.status === 'partial' && b.status !== 'partial') return -1;
-        if (a.status !== 'partial' && b.status === 'partial') return 1;
-        
-        // אחר כך פריטים חסרים
-        if (a.status === 'missing' && b.status !== 'missing') return -1;
-        if (a.status !== 'missing' && b.status === 'missing') return 1;
-        
-        // אחר כך פריטים בעגלה
-        if (a.status === 'inCart' && b.status !== 'inCart') return -1;
-        if (a.status !== 'inCart' && b.status === 'inCart') return 1;
-      }
+    if (isShoppingActive) {
+      // כאשר הקניות פעילות, סדר שונה - פריטים בהמתנה מוצגים ראשונים
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+    } else {
+      // סדר רגיל - מיון לפי סטטוס
+      // פריטים בהמתנה בהתחלה
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
       
-      return 0;
-    });
+      // אחר כך פריטים חלקיים
+      if (a.status === 'partial' && b.status !== 'partial') return -1;
+      if (a.status !== 'partial' && b.status === 'partial') return 1;
+      
+      // אחר כך פריטים חסרים
+      if (a.status === 'missing' && b.status !== 'missing') return -1;
+      if (a.status !== 'missing' && b.status === 'missing') return 1;
+      
+      // אחר כך פריטים בעגלה
+      if (a.status === 'inCart' && b.status !== 'inCart') return -1;
+      if (a.status !== 'inCart' && b.status === 'inCart') return 1;
+    }
+    
+    return 0;
+  });
   }, [items, isShoppingActive]);
   
   // התצוגה הראשית מציגה רק פריטים שלא purchased
