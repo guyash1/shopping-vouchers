@@ -47,9 +47,10 @@ export function Auth() {
       } else {
         await signInWithPopup(auth, provider);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('שגיאת התחברות עם Google:', error);
-      alert('שגיאה בהתחברות עם Google. אנא נסה שוב.');
+      const message = error?.code ? `קוד שגיאה: ${error.code}` : 'שגיאה לא ידועה';
+      alert(`שגיאה בהתחברות עם Google. ${message}`);
     }
   };
 
