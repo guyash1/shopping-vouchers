@@ -249,7 +249,7 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
               className="bg-white rounded-full p-1.5 text-red-600 hover:bg-red-50 transition-colors shadow-lg"
               aria-label="מחק תמונה"
             >
-              <X className="w-6 h-6" />
+              <Trash2 className="w-6 h-6" />
             </button>
           </div>
 
