@@ -197,11 +197,22 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
                       : 'border-gray-200 hover:bg-gray-50'
                   }`}
                   onClick={() => {
+                    const prevCategory = category;
                     setCategory(cat.id);
-                    // אם עוברים מקטגוריית סופרמרקט לקטגוריה אחרת, ניקוי שדות
-                    if (cat.id !== 'supermarket') {
+
+                    // אם עוברים לקטגוריית סופרמרקט, תמיד נאפס לברירת מחדל
+                    if (cat.id === 'supermarket') {
                       setStoreName(SUPERMARKET_PROVIDERS[0]);
-                      setCustomStoreName(''); // ניקוי השדה המותאם אישית
+                      setCustomStoreName('');
+                    } 
+                    // אם עוברים מקטגוריה שאינה סופרמרקט לקטגוריה שאינה סופרמרקט
+                    else if (prevCategory !== 'supermarket' && cat.id !== 'supermarket') {
+                      // נשמור את הערך הקיים
+                      // לא עושים כלום כי customStoreName כבר מכיל את הערך הנכון
+                    }
+                    // אם עוברים מסופרמרקט לקטגוריה אחרת
+                    else if (prevCategory === 'supermarket') {
+                      setCustomStoreName('');
                     }
                   }}
                 >
