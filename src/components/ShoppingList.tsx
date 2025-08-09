@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ShoppingCart, LogOut, HelpCircle, Home, Users } from "lucide-react";
 import { useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase';
-import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp, deleteField, getDoc, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp, getDoc, onSnapshot, orderBy } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { signOut } from 'firebase/auth';
 import Modal from 'react-modal';
