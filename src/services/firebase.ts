@@ -919,33 +919,36 @@ export const storageService = {
       if (!auth.currentUser) {
         throw new Error('User must be authenticated to delete images');
       }
-      
-      // בדיקה אם ה-URL מתחיל ב-https:// (ולא בחלק של Storage)
-      if (imageUrl.startsWith('https://') && !imageUrl.includes('firebase') && !imageUrl.includes('googleusercontent')) {
-        console.warn('Cannot delete image from external URL:', imageUrl);
+
+      // חילוץ הנתיב מה-URL
+      const urlObj = new URL(imageUrl);
+      const fullPath = urlObj.pathname.split('/o/')[1];
+      if (!fullPath) {
+        throw new Error('Invalid storage URL');
+      }
+
+      // פענוח ה-URL והסרת פרמטרים
+      const storagePath = decodeURIComponent(fullPath.split('?')[0]);
+      console.log('מוחק תמונה מנתיב:', storagePath);
+
+      // מחיקת התמונה
+      const imageRef = ref(storage, storagePath);
+      await deleteObject(imageRef);
+      console.log('התמונה נמחקה בהצלחה');
+    } catch (error: any) {
+      // אם הקובץ לא נמצא, לא נזרוק שגיאה
+      if (error.code === 'storage/object-not-found') {
+        console.warn('התמונה כבר נמחקה או לא קיימת');
         return;
       }
       
-      // וידוא ששם הקובץ לא מכיל קוד זדוני
-      if (imageUrl.includes('..') || imageUrl.includes('&') || imageUrl.includes('?')) {
-        throw new Error('Invalid image URL');
+      // שגיאת הרשאות
+      if (error.code === 'storage/unauthorized') {
+        console.error('אין הרשאות למחיקת התמונה');
+        return;
       }
-      
-      try {
-        // מקבלים את ה-ref מה-URL
-        const imageRef = ref(storage, imageUrl);
-        // מוחקים את התמונה
-        await deleteObject(imageRef);
-      } catch (storageError: any) {
-        // אם הקובץ לא נמצא, לא נזרוק שגיאה
-        if (storageError.code === 'storage/object-not-found') {
-          console.warn('Image not found in storage, already deleted or invalid URL');
-          return;
-        }
-        throw storageError;
-      }
-    } catch (error) {
-      console.error('Error deleting image:', error);
+
+      console.error('שגיאה במחיקת תמונה:', error);
       throw error;
     }
   }

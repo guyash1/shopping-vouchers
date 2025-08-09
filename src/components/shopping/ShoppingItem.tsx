@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, AlertCircle, MinusCircle, X, Edit, Camera, RefreshCw } from 'lucide-react';
+import { ShoppingCart, AlertCircle, MinusCircle, PlusCircle, X, Edit, Camera, RefreshCw } from 'lucide-react';
 import { Item } from '../../types/shopping';
 import Modal from 'react-modal';
 
@@ -9,6 +9,7 @@ interface ShoppingItemProps {
   onEditQuantity: (item: Item) => void;
   onToggleStatus: (id: string, status: Item['status']) => void;
   onUploadImage: (file: File, itemId: string) => Promise<string>;
+  onChangeQuantity: (id: string, newQuantity: number) => Promise<void>;
 }
 
 export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({ 
@@ -16,10 +17,12 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
   onDelete, 
   onEditQuantity, 
   onToggleStatus,
-  onUploadImage
+  onUploadImage,
+  onChangeQuantity
 }) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUpdatingQty, setIsUpdatingQty] = useState(false);
   
   const getItemBackgroundColor = (status: Item['status']) => {
     switch (status) {
@@ -92,9 +95,40 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-gray-800">{item.name}</span>
-                {/* תיבת כמות בולטת */}
-                <div className="inline-flex items-center bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100">
-                  <span className="font-semibold text-blue-700">{item.quantity}</span>
+                {/* בקרת כמות inline */}
+                <div className="inline-flex items-center bg-blue-50 rounded-md border border-blue-100 overflow-hidden">
+                  <button
+                    disabled={isUpdatingQty || item.quantity <= 1}
+                    onClick={async () => {
+                      if (item.quantity <= 1) return;
+                      try {
+                        setIsUpdatingQty(true);
+                        await onChangeQuantity(item.id, item.quantity - 1);
+                      } finally {
+                        setIsUpdatingQty(false);
+                      }
+                    }}
+                    className={`p-1 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-100`}
+                    aria-label="הפחת כמות"
+                  >
+                    <MinusCircle className="w-4 h-4 text-blue-600" />
+                  </button>
+                  <span className="px-2 font-semibold text-blue-700 select-none">{item.quantity}</span>
+                  <button
+                    disabled={isUpdatingQty}
+                    onClick={async () => {
+                      try {
+                        setIsUpdatingQty(true);
+                        await onChangeQuantity(item.id, item.quantity + 1);
+                      } finally {
+                        setIsUpdatingQty(false);
+                      }
+                    }}
+                    className={`p-1 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-100`}
+                    aria-label="הוסף כמות"
+                  >
+                    <PlusCircle className="w-4 h-4 text-blue-600" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -109,51 +143,63 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
           
           {/* כפתורי פעולה */}
           <div className="flex items-center justify-between">
-            <div className="flex gap-1">
-              <button
-                onClick={() => handleStatusToggle('inCart')}
-                className={`p-1.5 rounded-full hover:bg-green-100 ${
-                  item.status === 'inCart' ? 'bg-green-100' : ''
-                }`}
-                aria-label="סמן כנמצא בעגלה"
-              >
-                <ShoppingCart className={`w-4 h-4 ${
-                  item.status === 'inCart' ? 'text-green-500' : 'text-gray-400'
-                }`} />
-              </button>
+            <div className="flex gap-3">
+              <div className="flex flex-col items-center">
+                <button
+                  onClick={() => handleStatusToggle('inCart')}
+                  className={`p-1.5 rounded-full hover:bg-green-100 ${
+                    item.status === 'inCart' ? 'bg-green-100' : ''
+                  }`}
+                  aria-label="סמן כנמצא בעגלה"
+                >
+                  <ShoppingCart className={`w-4 h-4 ${
+                    item.status === 'inCart' ? 'text-green-500' : 'text-gray-400'
+                  }`} />
+                </button>
+                <span className="text-[10px] text-gray-500 mt-1 leading-none">בעגלה</span>
+              </div>
               
-              <button
-                onClick={() => handleStatusToggle('partial')}
-                className={`p-1.5 rounded-full hover:bg-yellow-100 ${
-                  item.status === 'partial' ? 'bg-yellow-100' : ''
-                }`}
-                aria-label="סמן כנלקח חלקית"
-              >
-                <MinusCircle className={`w-4 h-4 ${
-                  item.status === 'partial' ? 'text-yellow-500' : 'text-gray-400'
-                }`} />
-              </button>
+              <div className="flex flex-col items-center">
+                <button
+                  onClick={() => handleStatusToggle('partial')}
+                  className={`p-1.5 rounded-full hover:bg-yellow-100 ${
+                    item.status === 'partial' ? 'bg-yellow-100' : ''
+                  }`}
+                  aria-label="סמן כנלקח חלקית"
+                >
+                  <MinusCircle className={`w-4 h-4 ${
+                    item.status === 'partial' ? 'text-yellow-500' : 'text-gray-400'
+                  }`} />
+                </button>
+                <span className="text-[10px] text-gray-500 mt-1 leading-none">חלקי</span>
+              </div>
               
-              <button
-                onClick={() => handleStatusToggle('missing')}
-                className={`p-1.5 rounded-full hover:bg-red-100 ${
-                  item.status === 'missing' ? 'bg-red-100' : ''
-                }`}
-                aria-label="סמן כחסר במלאי"
-              >
-                <AlertCircle className={`w-4 h-4 ${
-                  item.status === 'missing' ? 'text-red-500' : 'text-gray-400'
-                }`} />
-              </button>
+              <div className="flex flex-col items-center">
+                <button
+                  onClick={() => handleStatusToggle('missing')}
+                  className={`p-1.5 rounded-full hover:bg-red-100 ${
+                    item.status === 'missing' ? 'bg-red-100' : ''
+                  }`}
+                  aria-label="סמן כחסר במלאי"
+                >
+                  <AlertCircle className={`w-4 h-4 ${
+                    item.status === 'missing' ? 'text-red-500' : 'text-gray-400'
+                  }`} />
+                </button>
+                <span className="text-[10px] text-gray-500 mt-1 leading-none">חסר</span>
+              </div>
             </div>
             
-            <button
-              onClick={() => onDelete(item.id)}
-              className="p-1.5 rounded-full hover:bg-gray-100"
-              aria-label="מחק פריט"
-            >
-              <X className="w-4 h-4 text-red-500" />
-            </button>
+            <div className="flex flex-col items-center">
+              <button
+                onClick={() => onDelete(item.id)}
+                className="p-1.5 rounded-full hover:bg-gray-100"
+                aria-label="מחק פריט"
+              >
+                <X className="w-4 h-4 text-red-500" />
+              </button>
+              <span className="text-[10px] text-gray-500 mt-1 leading-none">מחק</span>
+            </div>
           </div>
         </div>
       </div>

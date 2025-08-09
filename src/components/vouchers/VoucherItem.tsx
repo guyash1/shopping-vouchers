@@ -43,9 +43,11 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
   const [showExpiryDatePicker, setShowExpiryDatePicker] = useState(false);
   const [showRemainingAmountEditor, setShowRemainingAmountEditor] = useState(false);
   const [newExpiryDate, setNewExpiryDate] = useState<string>('');
-  const [newRemainingAmount, setNewRemainingAmount] = useState<string>('');
+  const [usedAmountInput, setUsedAmountInput] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showEditRemainingEditor, setShowEditRemainingEditor] = useState(false);
+  const [editRemainingInput, setEditRemainingInput] = useState<string>('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -152,11 +154,16 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
 
   // פתיחת עריכת הסכום הנותר
   const openRemainingAmountEditor = () => {
-    if (voucher.isPartial && voucher.remainingAmount !== undefined) {
-      const remainingAmount = typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount : 0;
-      setNewRemainingAmount(remainingAmount.toString());
+    if (voucher.isPartial) {
+      setUsedAmountInput('');
       setShowRemainingAmountEditor(true);
     }
+  };
+
+  const openEditRemainingEditor = () => {
+    const currentRemaining = typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount : voucher.amount;
+    setEditRemainingInput(currentRemaining.toString());
+    setShowEditRemainingEditor(true);
   };
 
   // עדכון הסכום הנותר
@@ -164,19 +171,19 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
     if (!onUpdateRemainingAmount) return;
     
     try {
-      const amount = parseFloat(newRemainingAmount);
-      if (isNaN(amount) || amount < 0) {
-        alert('יש להזין סכום תקין');
+      const used = parseFloat(usedAmountInput);
+      if (isNaN(used) || used <= 0) {
+        alert('יש להזין סכום שימוש תקין (> 0)');
         return;
       }
-      
-      // וידוא שהסכום החדש לא גדול מהסכום המקורי
-      if (amount > voucher.amount) {
-        alert('הסכום הנותר לא יכול להיות גדול מהסכום המקורי');
+      // יתרה נוכחית
+      const currentRemaining = typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount : voucher.amount;
+      if (used > currentRemaining) {
+        alert('הסכום לשימוש גדול מהיתרה הנוכחית');
         return;
       }
-      
-      await onUpdateRemainingAmount(voucher.id, amount);
+      const newRemaining = Math.max(0, Number((currentRemaining - used).toFixed(2)));
+      await onUpdateRemainingAmount(voucher.id, newRemaining);
       setShowRemainingAmountEditor(false);
     } catch (error) {
       console.error('שגיאה בעדכון סכום נותר:', error);
@@ -343,7 +350,16 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
                   className="mt-2 text-xs flex items-center px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
                 >
                   <Edit className="w-3 h-3 ml-1" />
-                  עדכן סכום נותר
+                  שימוש בסכום
+                </button>
+              )}
+              {!voucher.isUsed && onUpdateRemainingAmount && (
+                <button
+                  onClick={openEditRemainingEditor}
+                  className="mt-2 mr-2 rtl:ml-2 rtl:mr-0 text-xs flex items-center px-2 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-full transition-colors"
+                >
+                  <Edit className="w-3 h-3 ml-1" />
+                  עריכת יתרה
                 </button>
               )}
             </div>
@@ -517,13 +533,61 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
         </div>
       )}
 
-      {/* עריכת סכום נותר */}
+      {/* שימוש בסכום משובר נצבר */}
       {showRemainingAmountEditor && (
         <div className="mt-2 p-3 bg-gray-50 rounded-lg shadow-sm">
           <div className="flex justify-between items-center mb-2">
-            <h4 className="text-sm font-medium">עדכון סכום נותר</h4>
+            <h4 className="text-sm font-medium">שימוש בשובר נצבר</h4>
             <button
               onClick={() => setShowRemainingAmountEditor(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center">
+              <span className="text-sm ml-2">₪</span>
+              <input
+                type="number"
+                min="0.01"
+                max={(typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount : voucher.amount)}
+                step="0.01"
+                value={usedAmountInput}
+                onChange={(e) => setUsedAmountInput(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg"
+                placeholder="סכום לשימוש כעת"
+              />
+            </div>
+            <div className="text-xs text-gray-500 mb-2">
+              סכום מקורי: ₪{typeof voucher.amount === 'number' ? voucher.amount.toFixed(2) : '0.00'} · 
+              נותר כעת: ₪{(typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount : voucher.amount).toFixed(2)}
+            </div>
+            <div className="flex justify-end gap-2 mt-1">
+              <button
+                onClick={() => setShowRemainingAmountEditor(false)}
+                className="py-1.5 px-3 bg-gray-100 text-gray-700 rounded-lg text-sm"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={handleUpdateRemainingAmount}
+                className="py-1.5 px-3 bg-blue-100 text-blue-600 rounded-lg text-sm"
+              >
+                ביצוע שימוש
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* עריכת יתרה ידנית */}
+      {showEditRemainingEditor && (
+        <div className="mt-2 p-3 bg-gray-50 rounded-lg shadow-sm">
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="text-sm font-medium">עריכת יתרה</h4>
+            <button
+              onClick={() => setShowEditRemainingEditor(false)}
               className="text-gray-400 hover:text-gray-600"
             >
               <X className="w-4 h-4" />
@@ -537,10 +601,10 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
                 min="0"
                 max={voucher.amount}
                 step="0.01"
-                value={newRemainingAmount}
-                onChange={(e) => setNewRemainingAmount(e.target.value)}
+                value={editRemainingInput}
+                onChange={(e) => setEditRemainingInput(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-lg"
-                placeholder="סכום נותר"
+                placeholder="יתרה חדשה"
               />
             </div>
             <div className="text-xs text-gray-500 mb-2">
@@ -548,16 +612,29 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
             </div>
             <div className="flex justify-end gap-2 mt-1">
               <button
-                onClick={() => setShowRemainingAmountEditor(false)}
+                onClick={() => setShowEditRemainingEditor(false)}
                 className="py-1.5 px-3 bg-gray-100 text-gray-700 rounded-lg text-sm"
               >
                 ביטול
               </button>
               <button
-                onClick={handleUpdateRemainingAmount}
-                className="py-1.5 px-3 bg-blue-100 text-blue-600 rounded-lg text-sm"
+                onClick={async () => {
+                  if (!onUpdateRemainingAmount) return;
+                  const newVal = parseFloat(editRemainingInput);
+                  if (isNaN(newVal) || newVal < 0) {
+                    alert('יש להזין יתרה תקינה (≥ 0)');
+                    return;
+                  }
+                  if (newVal > voucher.amount) {
+                    alert('יתרה לא יכולה להיות גדולה מהסכום המקורי');
+                    return;
+                  }
+                  await onUpdateRemainingAmount(voucher.id, Number(newVal.toFixed(2)));
+                  setShowEditRemainingEditor(false);
+                }}
+                className="py-1.5 px-3 bg-purple-100 text-purple-700 rounded-lg text-sm"
               >
-                עדכן
+                שמירה
               </button>
             </div>
           </div>

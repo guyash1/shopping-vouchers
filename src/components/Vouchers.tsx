@@ -207,30 +207,31 @@ export default function Vouchers() {
         remainingAmount?: number;
     }) => {
         if (!user) return;
-        
+
         try {
-            // וידוא וסניטיזציה של נתוני קלט
+            // וידוא שדות בסיסיים
             if (!voucherData.storeName || !voucherData.amount) {
                 throw new Error('יש למלא את שם החנות והסכום');
             }
-            
-            // הוספת השובר תחילה ללא תמונה
-            const voucherId = await vouchersService.addVoucher(user.uid, {
+
+            // אם קיימת תמונה – נעלה אותה תחילה. במקרה של כשל לא ניצור שובר.
+            let imageUrl: string | undefined = undefined;
+            if (voucherData.imageFile) {
+                imageUrl = await storageService.uploadImage(user.uid, voucherData.imageFile, 'vouchers');
+            }
+
+            // יצירת השובר עם ה-imageUrl אם קיים
+            await vouchersService.addVoucher(user.uid, {
                 storeName: voucherData.storeName,
                 amount: voucherData.amount,
                 expiryDate: voucherData.expiryDate,
-                imageUrl: undefined, // נעלה את התמונה בהמשך
+                imageUrl,
                 category: voucherData.category,
                 householdId: household?.id || null,
                 isPartial: voucherData.isPartial || false,
                 remainingAmount: voucherData.isPartial ? voucherData.amount : undefined
             });
-            
-            // עכשיו, אם יש תמונה, נעלה אותה עם המזהה שנוצר
-            if (voucherData.imageFile && voucherId) {
-                await handleUploadImage(voucherData.imageFile, voucherId);
-            }
-            
+
             // סגירת המודל אחרי הוספה מוצלחת - VouchersContext יעדכן אוטומטית
             setIsAddModalOpen(false);
         } catch (error) {

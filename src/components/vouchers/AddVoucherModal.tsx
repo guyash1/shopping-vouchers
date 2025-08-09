@@ -37,16 +37,29 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
   const [customStoreName, setCustomStoreName] = useState<string>('');
   const [category, setCategory] = useState<string>(VOUCHER_CATEGORIES[0].id);
   const [isPartial, setIsPartial] = useState<boolean>(false);
+  const [errors, setErrors] = useState<{ storeName?: string; customStoreName?: string; amount?: string }>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
+
   // טיפול בשינוי תמונה
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      // ולידציה בסיסית בצד לקוח
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        alert('סוג קובץ לא נתמך. רק JPEG, PNG, GIF ו-WEBP מותרים');
+        return;
+      }
+      if (file.size > MAX_IMAGE_SIZE) {
+        alert('קובץ גדול מדי (מקסימום 3MB). נסה לכווץ את התמונה.');
+        return;
+      }
       setSelectedImage(file);
       
       // יצירת URL לתצוגה מקדימה של התמונה
@@ -61,11 +74,7 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
   // טיפול בשליחת הטופס
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!amount) {
-      alert('יש למלא את סכום השובר');
-      return;
-    }
+    setErrors({});
     
     let finalStoreName = '';
     
@@ -85,10 +94,43 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
       }
     }
     
+    // ולידציה לשדות חובה
+    const newErrors: { storeName?: string; customStoreName?: string; amount?: string } = {};
+    if (!amount) newErrors.amount = 'שדה חובה';
+
+    if (category === 'supermarket') {
+      if (storeName === 'אחר') {
+        if (!customStoreName.trim()) newErrors.customStoreName = 'שדה חובה';
+      }
+    } else {
+      if (!customStoreName.trim()) newErrors.customStoreName = 'שדה חובה';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     setLoading(true);
     
     try {
       const parsedAmount = parseFloat(amount);
+      if (!parsedAmount || parsedAmount <= 0) {
+        setErrors(prev => ({ ...prev, amount: 'סכום חייב להיות גדול מאפס' }));
+        return;
+      }
+
+      // בדיקה חוזרת לתמונה אם קיימת
+      if (selectedImage) {
+        if (!ALLOWED_TYPES.includes(selectedImage.type)) {
+          alert('סוג קובץ לא נתמך. רק JPEG, PNG, GIF ו-WEBP מותרים');
+          return;
+        }
+        if (selectedImage.size > MAX_IMAGE_SIZE) {
+          alert('קובץ גדול מדי (מקסימום 3MB).');
+          return;
+        }
+      }
       await onAddVoucher({
         storeName: finalStoreName,
         amount: parsedAmount,
@@ -142,7 +184,7 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
         
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* שדה קטגוריה */}
-          <div>
+           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">קטגוריה</label>
             <div className="grid grid-cols-5 gap-2">
               {VOUCHER_CATEGORIES.map((cat) => (
@@ -204,10 +246,12 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
           </div>
           
           {/* שדה שם השובר - תלוי בקטגוריה */}
-          {category === 'supermarket' ? (
+           {category === 'supermarket' ? (
             // אפשרויות רשתות סופרמרקט
             <div>
-              <label htmlFor="storeName" className="block text-sm font-medium text-gray-700 mb-1">{getStoreNameLabel()}</label>
+              <label htmlFor="storeName" className="block text-sm font-medium text-gray-700 mb-1">
+                {getStoreNameLabel()} <span className="text-red-500">*</span>
+              </label>
               <select
                 id="storeName"
                 className="block w-full border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -222,46 +266,61 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
               {/* שדה שם רשת מותאם אישית */}
               {storeName === "אחר" && (
                 <div className="mt-2">
-                  <label htmlFor="customStoreName" className="block text-sm font-medium text-gray-700 mb-1">שם הרשת</label>
+                  <label htmlFor="customStoreName" className="block text-sm font-medium text-gray-700 mb-1">
+                    שם הרשת <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     id="customStoreName"
-                    className="block w-full border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className={`block w-full rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm border ${errors.customStoreName ? 'border-red-300' : 'border-gray-300'}`}
                     value={customStoreName}
                     onChange={(e) => setCustomStoreName(e.target.value)}
                     placeholder="הזן שם רשת..."
                   />
+                  {errors.customStoreName && (
+                    <p className="mt-1 text-xs text-red-600">{errors.customStoreName}</p>
+                  )}
                 </div>
               )}
             </div>
           ) : (
             // שדה טקסט רגיל לשאר הקטגוריות
             <div>
-              <label htmlFor="customStoreName" className="block text-sm font-medium text-gray-700 mb-1">{getStoreNameLabel()}</label>
+              <label htmlFor="customStoreName" className="block text-sm font-medium text-gray-700 mb-1">
+                {getStoreNameLabel()} <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 id="customStoreName"
-                className="block w-full border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className={`block w-full rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm border ${errors.customStoreName ? 'border-red-300' : 'border-gray-300'}`}
                 value={customStoreName}
                 onChange={(e) => setCustomStoreName(e.target.value)}
                 placeholder={`הזן ${getStoreNameLabel()}...`}
               />
+              {errors.customStoreName && (
+                <p className="mt-1 text-xs text-red-600">{errors.customStoreName}</p>
+              )}
             </div>
           )}
           
           {/* שדה סכום */}
           <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">סכום (₪)</label>
+            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
+              סכום (₪) <span className="text-red-500">*</span>
+            </label>
             <input
               type="number"
               id="amount"
-              min="0"
+              min="0.01"
               step="0.01"
-              className="block w-full border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              className={`block w-full rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm border ${errors.amount ? 'border-red-300' : 'border-gray-300'}`}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="לדוגמה: 50"
             />
+            {errors.amount && (
+              <p className="mt-1 text-xs text-red-600">{errors.amount}</p>
+            )}
           </div>
           
           {/* שדה תאריך תפוגה */}
