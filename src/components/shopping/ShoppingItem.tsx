@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, AlertCircle, MinusCircle, PlusCircle, X, Edit, Camera, RefreshCw } from 'lucide-react';
+import { ShoppingCart, AlertCircle, MinusCircle, PlusCircle, X, Edit, Camera, RefreshCw, Trash2 } from 'lucide-react';
 import { Item } from '../../types/shopping';
 import Modal from 'react-modal';
 
