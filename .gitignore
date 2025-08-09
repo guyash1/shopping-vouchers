@@ -38,3 +38,6 @@ firebaserc
 
 
 /scripts
+
+# Project specific
+BACKLOG_TODO.md
