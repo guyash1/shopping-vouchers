@@ -8,7 +8,7 @@ interface ShoppingItemProps {
   onDelete: (id: string) => void;
   onEditQuantity: (item: Item) => void;
   onToggleStatus: (id: string, status: Item['status']) => void;
-  onUploadImage: (file: File, itemId: string) => Promise<string>;
+  onUploadImage: (file: File | null, itemId: string) => Promise<string>;
   onChangeQuantity: (id: string, newQuantity: number) => Promise<void>;
 }
 
@@ -23,6 +23,7 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUpdatingQty, setIsUpdatingQty] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const getItemBackgroundColor = (status: Item['status']) => {
     switch (status) {
@@ -221,25 +222,19 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
             <X className="w-6 h-6" />
           </button>
           
-          {/* כותרת המוצר - עם רקע כהה */}
-          <div className="w-full text-center mb-4 px-2">
-            <h3 className="text-2xl font-bold text-white drop-shadow mb-2">{item.name}</h3>
-            <p className="text-lg text-gray-200">כמות: {item.quantity}</p>
+          {/* כפתורי פעולה */}
+          <div className="absolute top-4 right-4 flex gap-2 z-[70]">
+            <button
+              onClick={() => setIsImageModalOpen(false)}
+              className="bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors shadow-lg"
+              aria-label="סגור תמונה"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
-
-          {/* תמונה מוגדלת */}
-          <div className="w-full mb-6">
-            <img 
-              src={item.imageUrl || ''} 
-              alt={item.name} 
-              className="w-full rounded-lg shadow-lg"
-              style={{ maxHeight: '75vh', objectFit: 'contain' }}
-            />
-          </div>
-
-          {/* כפתור להחלפת התמונה */}
-          <div className="flex justify-center mb-4">
-            <label className="flex items-center gap-2 px-6 py-3 bg-white/90 text-gray-800 rounded-lg cursor-pointer hover:bg-white transition-colors shadow-lg font-medium">
+          
+          <div className="absolute top-4 left-4 flex gap-2 z-[70]">
+            <label className="bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors shadow-lg cursor-pointer">
               <input 
                 type="file" 
                 accept="image/*"
@@ -247,11 +242,68 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
                 onChange={handleImageUpload}
                 disabled={isUploading}
               />
-              <RefreshCw className="w-5 h-5" />
-              <span>
-                {isUploading ? 'מעלה תמונה...' : 'החלף תמונה'}
-              </span>
+              <RefreshCw className={`w-6 h-6 ${isUploading ? 'animate-spin' : ''}`} />
             </label>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="bg-white rounded-full p-1.5 text-red-600 hover:bg-red-50 transition-colors shadow-lg"
+              aria-label="מחק תמונה"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* תמונה מוגדלת */}
+          <div className="w-full">
+            <img 
+              src={item.imageUrl || ''} 
+              alt={item.name} 
+              className="w-full rounded-lg shadow-lg"
+              style={{ maxHeight: '85vh', objectFit: 'contain' }}
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* מודל אישור מחיקת תמונה */}
+      <Modal
+        isOpen={showDeleteConfirm}
+        onRequestClose={() => setShowDeleteConfirm(false)}
+        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl outline-none p-6 max-w-sm w-full mx-4"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-50 z-[70]"
+      >
+        <div className="text-center">
+          <h3 className="text-lg font-semibold mb-4">מחיקת תמונה</h3>
+          <p className="text-gray-600 mb-6">
+            למחוק את התמונה? לא ניתן יהיה לשחזר אותה.
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={async () => {
+                if (item.imageUrl) {
+                  try {
+                    setIsUploading(true);
+                    await onUploadImage(null, item.id);
+                    setShowDeleteConfirm(false);
+                    setIsImageModalOpen(false);
+                  } catch (error) {
+                    console.error('שגיאה במחיקת תמונה:', error);
+                  } finally {
+                    setIsUploading(false);
+                  }
+                }
+              }}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+              disabled={isUploading}
+            >
+              {isUploading ? 'מוחק...' : 'מחק'}
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+            >
+              בטל
+            </button>
           </div>
         </div>
       </Modal>

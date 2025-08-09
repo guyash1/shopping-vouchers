@@ -1,12 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import Modal from 'react-modal';
-import { X, ZoomIn, Plus, Minus, Search, Clock, ShoppingCart, Trash2, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Plus, Minus, Search, Clock, ShoppingCart, Trash2, Calendar, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { Disclosure, Transition } from '@headlessui/react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
+import { storageService } from '../../services/firebase';
 
 interface HistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   historyItemsData: {
+    id: string;
     name: string;
     imageUrl?: string;
     purchaseCount: number;
@@ -16,6 +20,15 @@ interface HistoryModalProps {
   frequentItems: string[];
   onItemSelect: (itemName: string, quantity: number, imageUrl?: string) => void;
   onDeleteFromHistory: (itemName: string) => void;
+  handleUploadImage: (file: File, itemId: string) => Promise<string>;
+  onHistoryUpdate: (items: {
+    id: string;
+    name: string;
+    imageUrl?: string;
+    purchaseCount: number;
+    lastPurchaseDate?: Date;
+    lastPartialPurchaseDate?: Date;
+  }[]) => void;
   currentItems: string[]; // רשימת שמות המוצרים שכבר ברשימת הקניות
 }
 
@@ -26,9 +39,12 @@ export function HistoryModal({
   frequentItems,
   onItemSelect,
   onDeleteFromHistory,
-  currentItems
+  currentItems,
+  handleUploadImage,
+  onHistoryUpdate
 }: HistoryModalProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageToDelete, setImageToDelete] = useState<{ url: string; itemId: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [quantities, setQuantities] = useState<{[itemName: string]: number}>({});
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -100,29 +116,7 @@ export function HistoryModal({
     return items;
   }, [filteredItems, sortBy, selectedDate]);
 
-  // לוג נתוני היסטוריה כשהמודל נפתח
-  useEffect(() => {
-    if (isOpen) {
-      console.log('===== מודל היסטוריה =====');
-      console.log(`נפתח מודל היסטוריה עם ${historyItemsData.length} פריטים`);
-      
-      if (historyItemsData.length > 0) {
-        console.log('פריטים בהיסטוריה:');
-        historyItemsData.forEach((item, index) => {
-          console.log(`${index + 1}. ${item.name} - נקנה ${item.purchaseCount || 0} פעמים, תאריך אחרון: ${item.lastPurchaseDate ? formatLogDate(item.lastPurchaseDate) : 'לא ידוע'}`);
-        });
-      } else {
-        console.log('אין פריטים בהיסטוריה');
-      }
-      console.log('========================');
-    }
-  }, [isOpen, historyItemsData]);
 
-  // פורמט תאריך ללוגים - יותר פשוט
-  const formatLogDate = (date?: Date) => {
-    if (!date) return 'לא ידוע';
-    return date.toLocaleDateString('he-IL');
-  };
 
   // פורמט תאריך לתצוגה - מפורט יותר
   const formatDate = (date?: Date) => {
@@ -157,7 +151,7 @@ export function HistoryModal({
 
   // הוספת פריט עם הכמות הנבחרת
   const handleAddItem = (itemName: string, imageUrl?: string) => {
-    console.log(`מוסיף פריט מההיסטוריה: ${itemName}, כמות: ${getQuantity(itemName)}`);
+
     onItemSelect(itemName, getQuantity(itemName), imageUrl);
   };
 
@@ -189,12 +183,12 @@ export function HistoryModal({
               <div className="relative">
                 <input
                   type="search"
-                  placeholder="חיפוש מוצרים..."
+                  placeholder="חיפוש"
                   className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <Search className="absolute right-3 top-2.5 w-5 h-5 text-gray-400" />
+                <Search className="absolute right-2 top-2.5 w-5 h-5 text-gray-400 pointer-events-none" />
               </div>
             </div>
 
@@ -223,7 +217,7 @@ export function HistoryModal({
               >
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4" />
-                  <span>לפי כמות קניות</span>
+                  <span>פופולאריות</span>
                 </div>
               </button>
             </div>
@@ -296,7 +290,7 @@ export function HistoryModal({
 
         {/* רשימת פריטים */}
         <div className="flex-1 overflow-auto px-4 pb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {sortedAndFilteredItems.map((item, index) => (
               <div
                 key={index}
@@ -313,28 +307,72 @@ export function HistoryModal({
                   )}
 
                   {/* תמונת המוצר */}
-                  <div className="h-32 bg-gray-100 rounded-t-lg overflow-hidden">
+                  <div className="h-28 bg-gray-100 rounded-t-lg overflow-hidden">
                     {item.imageUrl ? (
                       <img
                         src={item.imageUrl}
                         alt={item.name}
-                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105 cursor-zoom-in"
                         onClick={() => setSelectedImage(item.imageUrl || null)}
+                        loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        <ShoppingCart className="w-8 h-8" />
-                      </div>
-                    )}
-                    {item.imageUrl && (
                       <button
-                        onClick={() => setSelectedImage(item.imageUrl || null)}
-                        className="absolute top-2 left-2 p-1.5 bg-black bg-opacity-50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="הגדל תמונה"
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = async (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) {
+                              const buttonSpan = (e.target as HTMLInputElement)?.parentElement?.querySelector('span');
+                              const originalText = buttonSpan?.textContent || 'הוסף תמונה';
+                              
+                              if (buttonSpan) {
+                                buttonSpan.textContent = 'מעלה תמונה...';
+                              }
+                              
+                              try {
+                                const imageUrl = await handleUploadImage(file, item.id);
+                                // עדכון מקומי של התמונה
+                                const updatedItems = historyItemsData.map(i => 
+                                  i.id === item.id ? { ...i, imageUrl } : i
+                                );
+                                
+                                // הצגת אנימציית הצלחה
+                                if (buttonSpan) {
+                                  buttonSpan.textContent = '✓ התמונה הועלתה';
+                                  setTimeout(() => {
+                                    if (buttonSpan) {
+                                      buttonSpan.textContent = originalText;
+                                    }
+                                  }, 2000);
+                                }
+                                
+                                // עדכון הסטייט
+                                onHistoryUpdate(updatedItems);
+                              } catch (error) {
+                                console.error('שגיאה בהעלאת תמונה:', error);
+                                if (buttonSpan) {
+                                  buttonSpan.textContent = '× שגיאה בהעלאה';
+                                  setTimeout(() => {
+                                    if (buttonSpan) {
+                                      buttonSpan.textContent = originalText;
+                                    }
+                                  }, 2000);
+                                }
+                              }
+                            }
+                          };
+                          input.click();
+                        }}
+                        className="w-full h-full flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-gray-500 hover:bg-gray-50 transition-colors"
                       >
-                        <ZoomIn className="w-3.5 h-3.5" />
+                        <ShoppingCart className="w-8 h-8" />
+                        <span className="text-xs">הוסף תמונה</span>
                       </button>
                     )}
+                    {/* הסרת כפתור הזום כי אפשר ללחוץ על התמונה ישירות */}
                   </div>
 
                   {/* פרטי המוצר */}
@@ -417,26 +455,70 @@ export function HistoryModal({
         overlayClassName="fixed inset-0 bg-black bg-opacity-80 z-[60]"
       >
         <div className="relative w-full max-w-2xl max-h-[85vh] my-auto overflow-y-auto flex flex-col items-center scrollbar-hide">
-          <button
-            onClick={() => setSelectedImage(null)}
-            className="absolute top-4 right-4 bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors z-[70] shadow-lg"
-            aria-label="סגור תמונה"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          {/* כפתורי פעולה */}
+          <div className="absolute top-4 right-4 flex gap-2 z-[70]">
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors shadow-lg"
+              aria-label="סגור תמונה"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
           
-          {/* כותרת */}
-          <div className="w-full text-center mb-4 px-2">
-            <h3 className="text-2xl font-bold text-white drop-shadow">תמונת מוצר</h3>
+          <div className="absolute top-4 left-4 flex gap-2 z-[70]">
+            <button
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = async (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0];
+                  if (file) {
+                    try {
+                      // מציאת המוצר המתאים
+                      const item = historyItemsData.find(i => i.imageUrl === selectedImage);
+                      if (item) {
+                        const imageUrl = await handleUploadImage(file, item.id);
+                        const updatedItems = historyItemsData.map(i => 
+                          i.id === item.id ? { ...i, imageUrl } : i
+                        );
+                        onHistoryUpdate(updatedItems);
+                        setSelectedImage(imageUrl);
+                      }
+                    } catch (error) {
+                      console.error('שגיאה בהעלאת תמונה:', error);
+                    }
+                  }
+                };
+                input.click();
+              }}
+              className="bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors shadow-lg"
+              aria-label="החלף תמונה"
+            >
+              <RefreshCw className="w-6 h-6" />
+            </button>
+            <button
+              onClick={() => {
+                const item = historyItemsData.find(i => i.imageUrl === selectedImage);
+                if (item && item.imageUrl) {
+                  setImageToDelete({ url: item.imageUrl, itemId: item.id });
+                }
+              }}
+              className="bg-white rounded-full p-1.5 text-red-600 hover:bg-red-50 transition-colors shadow-lg"
+              aria-label="מחק תמונה"
+            >
+              <Trash2 className="w-6 h-6" />
+            </button>
           </div>
 
           {/* תמונה מוגדלת */}
-          <div className="w-full mb-6">
+          <div className="w-full">
             <img
               src={selectedImage || ''}
               alt="תמונה מוגדלת"
               className="w-full rounded-lg shadow-lg"
-              style={{ maxHeight: '75vh', objectFit: 'contain' }}
+              style={{ maxHeight: '85vh', objectFit: 'contain' }}
             />
           </div>
         </div>
@@ -471,6 +553,58 @@ export function HistoryModal({
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
             >
               ביטול
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* מודל אישור מחיקת תמונה */}
+      <Modal
+        isOpen={!!imageToDelete}
+        onRequestClose={() => setImageToDelete(null)}
+        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl outline-none p-6 max-w-sm w-full mx-4"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-50 z-[70]"
+      >
+        <div className="text-center">
+          <h3 className="text-lg font-semibold mb-4">מחיקת תמונה</h3>
+          <p className="text-gray-600 mb-6">
+            למחוק את התמונה? לא ניתן יהיה לשחזר אותה.
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={async () => {
+                if (imageToDelete) {
+                  try {
+                    // מחיקת התמונה מהסטורג'
+                    await storageService.deleteImage(imageToDelete.url);
+                    
+                    // עדכון המוצר בפיירסטור
+                    const itemRef = doc(db, 'items', imageToDelete.itemId);
+                    await updateDoc(itemRef, {
+                      imageUrl: null
+                    });
+                    
+                    // עדכון הסטייט
+                    const updatedItems = historyItemsData.map(i => 
+                      i.id === imageToDelete.itemId ? { ...i, imageUrl: undefined } : i
+                    );
+                    onHistoryUpdate(updatedItems);
+                    setSelectedImage(null);
+                    setImageToDelete(null);
+                  } catch (error) {
+                    console.error('שגיאה במחיקת תמונה:', error);
+                  }
+                }
+              }}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            >
+              מחק
+            </button>
+            <button
+              onClick={() => setImageToDelete(null)}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+            >
+              בטל
             </button>
           </div>
         </div>

@@ -32,6 +32,7 @@ export default function ShoppingList() {
   const [isPartialItemModalOpen, setIsPartialItemModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [historyItems, setHistoryItems] = useState<{
+    id: string;
     name: string; 
     imageUrl?: string; 
     purchaseCount: number;
@@ -52,20 +53,20 @@ export default function ShoppingList() {
     if (!user || !isActive) {
       // אם אין משתמש או הטאב לא פעיל - לא מתחיל onSnapshot
       if (!isActive && !user) {
-        console.log('🔇 Shopping onSnapshot עוצר - אין משתמש וטאב לא פעיל');
+  
       } else if (!isActive) {
-        console.log('🔇 Shopping onSnapshot עוצר - טאב לא פעיל (חיסכון בקריאות Firestore)');
+
         }
       return;
     }
 
     if (!isShoppingRoute) {
-      console.log('🔇 Shopping onSnapshot עוצר - לא בטאב קניות (חיסכון בקריאות Firestore)');
+
       setLoading(false);
       return;
     }
 
-    console.log('🔊 Shopping onSnapshot מתחיל - בטאב קניות ופעיל');
+
 
     let q;
     if (selectedHousehold) {
@@ -109,7 +110,7 @@ export default function ShoppingList() {
     });
 
     return () => {
-      console.log('🔇 Shopping onSnapshot מנותק');
+
       unsubscribe();
     };
   }, [user, selectedHousehold, isActive, isShoppingRoute]);
@@ -130,22 +131,15 @@ export default function ShoppingList() {
     if (!user) return;
     
     try {
-      console.log('מתחיל טעינת היסטוריה...');
-      
-      // טעינת היסטוריה ישירות מהפיירסטור בשאילתה מקיפה
       let historyQuery;
       
       if (selectedHousehold) {
-        console.log(`מחפש מוצרים במשק בית ${selectedHousehold.id}`);
-        
         // שאילתה לכל הפריטים ששייכים למשק הבית
         historyQuery = query(
           collection(db, 'items'),
           where('householdId', '==', selectedHousehold.id)
         );
       } else {
-        console.log(`מחפש מוצרים אישיים של משתמש ${user.uid}`);
-        
         // שאילתה לפריטים אישיים של המשתמש
         historyQuery = query(
           collection(db, 'items'),
@@ -155,12 +149,10 @@ export default function ShoppingList() {
       }
       
       // ביצוע השאילתה
-      console.log('ביצוע שאילתת היסטוריה...');
       const querySnapshot = await getDocs(historyQuery);
-      console.log(`נמצאו ${querySnapshot.size} פריטים בהיסטוריה (לפני קיבוץ)`);
 
       // קיבוץ לפי שם מוצר (case-insensitive) ושמירת ההופעה האחרונה בלבד
-      const grouped = new Map<string, { name: string; imageUrl?: string; purchaseCount: number; lastPurchaseDate?: Date; lastPartialPurchaseDate?: Date }>();
+      const grouped = new Map<string, { id: string; name: string; imageUrl?: string; purchaseCount: number; lastPurchaseDate?: Date; lastPartialPurchaseDate?: Date }>();
 
       querySnapshot.forEach((snap) => {
         const data = snap.data();
@@ -168,7 +160,8 @@ export default function ShoppingList() {
         const key = rawName.trim().toLowerCase();
         if (!key) return;
 
-        const incoming = {
+                  const incoming = {
+          id: snap.id,
           name: rawName,
           imageUrl: data.imageUrl || undefined,
           purchaseCount: data.purchaseCount || 0,
@@ -192,7 +185,10 @@ export default function ShoppingList() {
         }
       });
 
-      const historyData = Array.from(grouped.values()).sort(
+      const historyData = Array.from(grouped.entries()).map(([_, item]) => ({
+        ...item,
+        id: item.id || '' // Adding id field
+      })).sort(
         (a, b) => (b.lastPurchaseDate?.getTime() || 0) - (a.lastPurchaseDate?.getTime() || 0)
       );
 
@@ -214,7 +210,7 @@ export default function ShoppingList() {
   // טעינת ההיסטוריה כאשר פותחים את המודל
   useEffect(() => {
     if (isHistoryModalOpen && user) {
-      console.log('מודל היסטוריה נפתח - טעינת היסטוריה מחדש');
+  
       loadHistory();
     }
   }, [isHistoryModalOpen, user, loadHistory]);
@@ -226,7 +222,7 @@ export default function ShoppingList() {
     image?: File,
     existingImageUrl?: string
   ) => {
-    console.log(`מתחיל הוספת פריט: ${itemName}, כמות: ${quantity}`);
+
     
     if (!user || !itemName.trim()) return;
     
@@ -252,7 +248,7 @@ export default function ShoppingList() {
       }
       
       const querySnapshot = await getDocs(itemQuery);
-      console.log('נמצאו פריטים קיימים:', querySnapshot.size);
+
 
       // אם קיים לפחות מסמך אחד בשם הזה – נשתמש באחד הקיימים (העדפה: האחרון שנרכש)
       if (!querySnapshot.empty) {
@@ -310,7 +306,7 @@ export default function ShoppingList() {
         };
         const itemId = await shoppingListService.addItem(newItemData);
         setItems(prev => [...prev, { ...newItemData, id: itemId, purchaseCount: 0, householdId: selectedHousehold ? selectedHousehold.id : null } as Item]);
-        console.log('נוסף מוצר חדש:', itemId);
+  
       }
     } catch (error) {
       console.error('שגיאה בהוספת פריט:', error);
@@ -331,20 +327,20 @@ export default function ShoppingList() {
 
       if (item.purchaseCount && item.purchaseCount > 0) {
         // אם המוצר נקנה בעבר, רק משנים את הסטטוס שלו ל-purchased
-        console.log(`פריט ${id} נקנה בעבר ${item.purchaseCount} פעמים, משנה סטטוס ל-purchased`);
+  
         await updateDoc(itemRef, {
           status: 'purchased',
           updatedAt: serverTimestamp()
         });
       } else {
         // אם המוצר לא נקנה אף פעם, מוחקים אותו לגמרי
-        console.log(`פריט ${id} לא נקנה אף פעם, מוחק מה-DB`);
+  
         await deleteDoc(itemRef);
       }
       
       // מסיר את הפריט מהרשימה המקומית בכל מקרה
       setItems(prev => prev.filter(item => item.id !== id));
-      console.log(`פריט ${id} טופל בהצלחה`);
+
 
       // מעדכן את ההיסטוריה
       await loadHistory();
@@ -370,7 +366,7 @@ export default function ShoppingList() {
           )
         );
 
-      console.log(`עודכן סטטוס של פריט ${id} ל-${status}`);
+
     } catch (error) {
       console.error('שגיאה בעדכון סטטוס:', error);
     }
@@ -400,7 +396,7 @@ export default function ShoppingList() {
       );
       
       setSelectedItem(null);
-      console.log(`כמות של פריט ${id} עודכנה ל-${newQuantity}`);
+
     } catch (error) {
       console.error('שגיאה בעדכון כמות:', error);
     }
@@ -433,9 +429,8 @@ export default function ShoppingList() {
       
       const querySnapshot = await getDocs(householdQuery);
       
-      console.log(`חיפוש מוצר "${itemName}" מההיסטוריה:`, 
-        querySnapshot.size, 'תוצאות',
-        selectedHousehold ? `במשק בית ${selectedHousehold.id}` : 'אישי');
+
+
       
       if (!querySnapshot.empty) {
         // מצאנו את המוצר ששייך למשתמש או למשק הבית - נעדכן את הסטטוס שלו ל-PENDING
@@ -480,10 +475,10 @@ export default function ShoppingList() {
           }
         });
         
-        console.log('מוצר הועבר למצב pending:', itemName);
+  
       } else {
         // המוצר לא נמצא במשק הבית או ברשימה האישית - ניצור פריט חדש
-        console.log('יוצר מוצר חדש עבור משתמש/משק בית:', itemName);
+
         await handleAddItem(itemName, quantity, undefined, imageUrl);
       }
       
@@ -533,7 +528,7 @@ export default function ShoppingList() {
         if (data.imageUrl) {
           try {
             await storageService.deleteImage(data.imageUrl);
-            console.log(`נמחקה תמונה: ${data.imageUrl}`);
+      
           } catch (error) {
             console.error('שגיאה במחיקת תמונה:', error);
             // ממשיך למרות שגיאה במחיקת תמונה
@@ -542,7 +537,7 @@ export default function ShoppingList() {
         
         // מחיקת הפריט עצמו
         await deleteDoc(doc.ref);
-        console.log(`נמחק פריט: ${itemName}`);
+  
       }
       
       // עדכון הסטייט המקומי
@@ -555,7 +550,7 @@ export default function ShoppingList() {
   };
 
   // העלאת תמונה
-  const handleUploadImage = async (file: File, itemId: string): Promise<string> => {
+  const handleUploadImage = async (file: File | null, itemId: string): Promise<string> => {
     if (!user) throw new Error('המשתמש אינו מחובר');
     
     try {
@@ -563,38 +558,63 @@ export default function ShoppingList() {
       const existingItem = items.find(item => item.id === itemId);
       const oldImageUrl = existingItem?.imageUrl;
 
-      // העלאת התמונה החדשה
-      const imageUrl = await storageService.uploadImage(user.uid, file, 'items');
-      await shoppingListService.updateItem(itemId, { imageUrl });
+      if (file === null) {
+        // מחיקת תמונה
+        if (oldImageUrl) {
+          try {
+            await storageService.deleteImage(oldImageUrl);
       
-      // מחיקת התמונה הישנה אם קיימת
-      if (oldImageUrl) {
-        try {
-          await storageService.deleteImage(oldImageUrl);
-          console.log('התמונה הישנה נמחקה בהצלחה');
-        } catch (deleteError) {
-          console.warn('שגיאה במחיקת התמונה הישנה:', deleteError);
-          // ממשיכים למרות שגיאה במחיקת התמונה הישנה
+          } catch (deleteError) {
+            console.warn('שגיאה במחיקת התמונה:', deleteError);
+            throw deleteError;
+          }
         }
+        
+        // עדכון המוצר בפיירסטור
+        await shoppingListService.updateItem(itemId, { imageUrl: null });
+        
+        // עדכון הסטייט המקומי
+        setItems(prev =>
+          prev.map(item =>
+            item.id === itemId ? { ...item, imageUrl: null } : item
+          )
+        );
+        
+        return '';
+      } else {
+        // העלאת תמונה חדשה
+        const imageUrl = await storageService.uploadImage(user.uid, file, 'items');
+        await shoppingListService.updateItem(itemId, { imageUrl });
+        
+        // מחיקת התמונה הישנה אם קיימת
+        if (oldImageUrl) {
+          try {
+            await storageService.deleteImage(oldImageUrl);
+      
+          } catch (deleteError) {
+            console.warn('שגיאה במחיקת התמונה הישנה:', deleteError);
+            // ממשיכים למרות שגיאה במחיקת התמונה הישנה
+          }
+        }
+        
+        // עדכון הסטייט המקומי
+        setItems(prev =>
+          prev.map(item =>
+            item.id === itemId ? { ...item, imageUrl } : item
+          )
+        );
+        
+        return imageUrl;
       }
-      
-      // עדכון הסטייט המקומי
-      setItems(prev =>
-        prev.map(item =>
-          item.id === itemId ? { ...item, imageUrl } : item
-        )
-      );
-      
-      return imageUrl;
     } catch (error) {
-      console.error('שגיאה בהעלאת תמונה:', error);
+      console.error('שגיאה בהעלאת/מחיקת תמונה:', error);
       throw error;
     }
   };
 
   // חישוב סטטיסטיקות קניות - עם memoization לביצועים
   const stats = useMemo(() => {
-    console.log('🧮 מחשב סטטיסטיקות קניות...');
+
     
     // פריטים פעילים הם אלה שלא במצב purchased
     const activeItems = items.filter(item => item.status !== 'purchased');
@@ -712,7 +732,7 @@ export default function ShoppingList() {
         setIsPartialItemModalOpen(true);
       }
       
-      console.log('סיום קניות הושלם בהצלחה!');
+  
       
       // מבטלים מצב קניות פעיל
       setIsShoppingActive(false);
@@ -731,7 +751,7 @@ export default function ShoppingList() {
   // טיפול בפריטים שנקנו במלואם
   const handleProcessInCartItems = async (itemsInCart: Item[]) => {
     try {
-      console.log(`מעבד ${itemsInCart.length} פריטים שנקנו במלואם ועובר למצב 'purchased'`);
+  
       
       for (const item of itemsInCart) {
         try {
@@ -751,7 +771,7 @@ export default function ShoppingList() {
             householdId: finalHouseholdId
           });
           
-          console.log(`פריט ${item.name} סומן כנרכש (purchased), householdId: ${finalHouseholdId}`);
+    
         } catch (error) {
           console.error(`שגיאה בטיפול בפריט ${item.name}:`, error);
         }
@@ -772,7 +792,7 @@ export default function ShoppingList() {
     );
       
       // טעינה מחדש של ההיסטוריה באופן מפורש ומיידי
-      console.log('טוען היסטוריה מיד לאחר עדכון פריטים ל-purchased');
+  
       await loadHistory();
       
       // טעינה חוזרת של היסטוריה בהדרגה - לפעמים פיירבייס לא מחזיר את הנתונים המעודכנים מיד
@@ -780,7 +800,7 @@ export default function ShoppingList() {
       
       for (const delay of delayTimes) {
         setTimeout(async () => {
-          console.log(`טוען היסטוריה שוב לאחר ${delay}ms`);
+    
           await loadHistory();
         }, delay);
       }
@@ -1040,6 +1060,8 @@ export default function ShoppingList() {
           onItemSelect={handleAddFromHistory}
           historyItemsData={historyItems}
           onDeleteFromHistory={handleDeleteFromHistory}
+          handleUploadImage={handleUploadImage}
+          onHistoryUpdate={setHistoryItems}
           currentItems={items.filter(item => item.status !== 'purchased').map(item => item.name)}
         />
 

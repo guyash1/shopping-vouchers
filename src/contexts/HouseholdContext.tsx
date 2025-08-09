@@ -43,7 +43,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
                      (now - cache.timestamp) < CACHE_TTL;
 
       if (isValid) {
-        console.log('🎯 טענו משקי בית מהcache (חיסכון בקריאת Firestore)');
+  
         return cache.households;
       } else {
         // מחיקת cache שתפג
@@ -66,7 +66,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         userId
       };
       setStorageItem(CACHE_KEY, cache);
-      console.log('💾 שמרנו משקי בית בcache מאובטח');
+
     } catch (error) {
       console.error('שגיאה בשמירת cache:', error);
     }
@@ -96,7 +96,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       }
 
       // אם אין cache או נדרש refresh - טוען מהשרת
-      console.log('🔄 טוען משקי בית מהשרת...');
+  
       const hh = await householdService.getUserHouseholds(user.uid);
       setHouseholds(hh);
       

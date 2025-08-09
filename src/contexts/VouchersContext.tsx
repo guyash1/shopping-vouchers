@@ -38,17 +38,17 @@ export function VouchersProvider({ children }: { children: ReactNode }) {
     }
 
     if (!isActive) {
-      console.log('🔇 Vouchers onSnapshot עוצר - טאב לא פעיל (חיסכון בקריאות Firestore)');
+
       return;
     }
 
     if (!isVoucherRoute) {
-      console.log('🔇 Vouchers onSnapshot עוצר - לא בטאב שוברים (חיסכון בקריאות Firestore)');
+
       setLoading(false);
       return;
     }
 
-    console.log('🔊 Vouchers onSnapshot מתחיל - בטאב שוברים ופעיל');
+
     setLoading(true);
     setError(null);
 
@@ -157,7 +157,7 @@ export function VouchersProvider({ children }: { children: ReactNode }) {
     );
 
     return () => {
-      console.log('🔇 Vouchers onSnapshot מנותק');
+
       unsubscribe();
     };
   }, [user, selectedHousehold, isActive, isVoucherRoute]);
