@@ -307,13 +307,27 @@ export default function Vouchers() {
                 throw new Error('סוג קובץ לא נתמך. רק JPEG, PNG, GIF ו-WEBP מותרים');
             }
             
-            // העלאת התמונה באמצעות storageService
+            // מציאת השובר הקיים כדי לבדוק אם יש תמונה ישנה
+            const existingVoucher = vouchers.find(v => v.id === voucherId);
+            const oldImageUrl = existingVoucher?.imageUrl;
+            
+            // העלאת התמונה החדשה באמצעות storageService
             const imageUrl = await storageService.uploadImage(user.uid, file, 'vouchers');
             
             // עדכון השובר עם כתובת התמונה - VouchersContext יעדכן אוטומטית
             await vouchersService.updateVoucher(voucherId, {
                 imageUrl
             });
+            
+            // מחיקת התמונה הישנה אם קיימת
+            if (oldImageUrl) {
+                try {
+                    await storageService.deleteImage(oldImageUrl);
+                } catch (deleteError) {
+                    console.warn('שגיאה במחיקת התמונה הישנה:', deleteError);
+                    // ממשיכים למרות שגיאה במחיקת התמונה הישנה
+                }
+            }
             
             return imageUrl;
         } catch (error) {

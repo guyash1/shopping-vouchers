@@ -334,6 +334,15 @@ export default function ShoppingList() {
         });
       } else {
         // אם המוצר לא נקנה אף פעם, מוחקים אותו לגמרי
+        // מוחקים גם את התמונה מ-Storage אם קיימת
+        if (item.imageUrl) {
+          try {
+            await storageService.deleteImage(item.imageUrl);
+          } catch (deleteError) {
+            console.warn('שגיאה במחיקת התמונה:', deleteError);
+            // ממשיכים למחוק את המוצר גם אם נכשלה מחיקת התמונה
+          }
+        }
   
         await deleteDoc(itemRef);
       }
