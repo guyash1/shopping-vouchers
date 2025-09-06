@@ -68,8 +68,6 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
   // State נוסף שלא חלק מהטופס
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [showImageEditor, setShowImageEditor] = useState(false);
-  const [originalImage, setOriginalImage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -81,7 +79,7 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
       try {
         const savedImageData = localStorage.getItem('addVoucherModal_imageData');
         if (savedImageData) {
-          const { preview, fileName, fileType } = JSON.parse(savedImageData);
+          const { preview, fileName, fileType, fileSize } = JSON.parse(savedImageData);
           setImagePreview(preview);
           
           // שחזור File object מה-base64
@@ -140,42 +138,15 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
         alert('קובץ גדול מדי (מקסימום 3MB). נסה לכווץ את התמונה.');
         return;
       }
+      setSelectedImage(file);
       
-      // יצירת URL של התמונה המקורית ופתיחת עורך
+      // יצירת URL לתצוגה מקדימה של התמונה
       const reader = new FileReader();
       reader.onload = () => {
-        setOriginalImage(reader.result as string);
-        setShowImageEditor(true);
+        setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-      
-      // איפוס השדה כדי שנוכל לבחור אותו קובץ שוב
-      e.target.value = '';
     }
-  };
-
-  // פונקציה לשמירת התמונה החתוכה
-  const handleSaveCroppedImage = (croppedImageBlob: Blob, fileName: string) => {
-    // יצירת File object מה-blob
-    const croppedFile = new File([croppedImageBlob], fileName, { type: croppedImageBlob.type });
-    setSelectedImage(croppedFile);
-    
-    // יצירת preview
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(croppedFile);
-    
-    // סגירת העורך
-    setShowImageEditor(false);
-    setOriginalImage(null);
-  };
-
-  // ביטול עריכת התמונה
-  const handleCancelImageEdit = () => {
-    setShowImageEditor(false);
-    setOriginalImage(null);
   };
 
   // טיפול בשליחת הטופס עם React Hook Form
@@ -516,230 +487,6 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
             </button>
           </div>
         </form>
-      </div>
-      
-      {/* עורך תמונה */}
-      {showImageEditor && originalImage && (
-        <ImageCropperModal
-          imageUrl={originalImage}
-          onSave={handleSaveCroppedImage}
-          onCancel={handleCancelImageEdit}
-        />
-      )}
-    </div>
-  );
-}
-
-// רכיב עורך תמונה פשוט
-interface ImageCropperModalProps {
-  imageUrl: string;
-  onSave: (blob: Blob, fileName: string) => void;
-  onCancel: () => void;
-}
-
-function ImageCropperModal({ imageUrl, onSave, onCancel }: ImageCropperModalProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 200, height: 200 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [imageLoaded, setImageLoaded] = useState(false);
-
-  // ציור התמונה והמסגרת
-  useEffect(() => {
-    if (!imageLoaded || !canvasRef.current || !imageRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const img = imageRef.current;
-
-    if (!ctx) return;
-
-    // ניקוי הקנבס
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // ציור התמונה
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    // ציור overlay כהה
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // ניקוי אזור החיתוך
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillRect(cropArea.x, cropArea.y, cropArea.width, cropArea.height);
-
-    // ציור מסגרת החיתוך
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(cropArea.x, cropArea.y, cropArea.width, cropArea.height);
-
-    // ציור נקודות שינוי גודל
-    const handleSize = 8;
-    ctx.fillStyle = '#3b82f6';
-    ctx.fillRect(cropArea.x + cropArea.width - handleSize, cropArea.y + cropArea.height - handleSize, handleSize, handleSize);
-  }, [cropArea, imageLoaded]);
-
-  // טיפול בלחיצת עכבר
-  const handleMouseDown = (e: React.MouseEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // בדיקה אם לחצו על נקודת שינוי הגודל
-    const handleSize = 8;
-    const handleX = cropArea.x + cropArea.width - handleSize;
-    const handleY = cropArea.y + cropArea.height - handleSize;
-
-    if (x >= handleX && x <= handleX + handleSize && y >= handleY && y <= handleY + handleSize) {
-      setIsResizing(true);
-    } else if (x >= cropArea.x && x <= cropArea.x + cropArea.width && 
-               y >= cropArea.y && y <= cropArea.y + cropArea.height) {
-      setIsDragging(true);
-      setDragStart({ x: x - cropArea.x, y: y - cropArea.y });
-    }
-  };
-
-  // טיפול בתנועת עכבר
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    if (isDragging) {
-      const newX = Math.max(0, Math.min(x - dragStart.x, canvas.width - cropArea.width));
-      const newY = Math.max(0, Math.min(y - dragStart.y, canvas.height - cropArea.height));
-      setCropArea(prev => ({ ...prev, x: newX, y: newY }));
-    } else if (isResizing) {
-      const newWidth = Math.max(50, Math.min(x - cropArea.x, canvas.width - cropArea.x));
-      const newHeight = Math.max(50, Math.min(y - cropArea.y, canvas.height - cropArea.y));
-      setCropArea(prev => ({ ...prev, width: newWidth, height: newHeight }));
-    }
-  };
-
-  // טיפול בשחרור עכבר
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setIsResizing(false);
-  };
-
-  // שמירת התמונה החתוכה
-  const handleSave = () => {
-    const canvas = canvasRef.current;
-    const img = imageRef.current;
-    if (!canvas || !img) return;
-
-    // יצירת קנבס חדש לתמונה החתוכה
-    const cropCanvas = document.createElement('canvas');
-    const cropCtx = cropCanvas.getContext('2d');
-    if (!cropCtx) return;
-
-    cropCanvas.width = cropArea.width;
-    cropCanvas.height = cropArea.height;
-
-    // חישוב יחס בין התצוגה לתמונה המקורית
-    const scaleX = img.naturalWidth / canvas.width;
-    const scaleY = img.naturalHeight / canvas.height;
-
-    // חיתוך התמונה
-    cropCtx.drawImage(
-      img,
-      cropArea.x * scaleX, cropArea.y * scaleY,
-      cropArea.width * scaleX, cropArea.height * scaleY,
-      0, 0,
-      cropArea.width, cropArea.height
-    );
-
-    // המרה ל-blob
-    cropCanvas.toBlob((blob) => {
-      if (blob) {
-        onSave(blob, 'cropped-image.jpg');
-      }
-    }, 'image/jpeg', 0.9);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-full overflow-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">עריכת תמונה</h3>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        
-        <div className="mb-4 text-sm text-gray-600">
-          גרור את המסגרת למיקום הרצוי, וגרור את הפינה הימנית התחתונה לשינוי גודל
-        </div>
-        
-        <div className="relative mb-6 flex justify-center">
-          <canvas
-            ref={canvasRef}
-            width={600}
-            height={400}
-            className="border border-gray-300 cursor-move"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          />
-          
-          <img
-            ref={imageRef}
-            src={imageUrl}
-            alt="Original"
-            className="hidden"
-            onLoad={() => {
-              const img = imageRef.current;
-              const canvas = canvasRef.current;
-              if (img && canvas) {
-                // חישוב יחס גובה-רוחב
-                const aspectRatio = img.naturalWidth / img.naturalHeight;
-                
-                if (aspectRatio > 600 / 400) {
-                  canvas.width = 600;
-                  canvas.height = 600 / aspectRatio;
-                } else {
-                  canvas.height = 400;
-                  canvas.width = 400 * aspectRatio;
-                }
-                
-                // מיקום התחלתי של מסגרת החיתוך במרכז
-                setCropArea({
-                  x: canvas.width / 4,
-                  y: canvas.height / 4,
-                  width: canvas.width / 2,
-                  height: canvas.height / 2
-                });
-                
-                setImageLoaded(true);
-              }
-            }}
-          />
-        </div>
-        
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-          >
-            ביטול
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            שמור תמונה
-          </button>
-        </div>
       </div>
     </div>
   );
