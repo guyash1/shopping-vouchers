@@ -107,7 +107,8 @@ export function useFormPersistence<TFieldValues extends FieldValues>(
     });
 
     return () => subscription.unsubscribe();
-  }, [storageKey]); // הסרתי dependencies שגורמים ללולאה
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]); // מתעלמים מ-dependencies אחרים כדי למנוע re-subscriptions מיותרים
 
   // פונקציה לניקוי ידני של הנתונים השמורים
   const clearPersistedData = useCallback(() => {
