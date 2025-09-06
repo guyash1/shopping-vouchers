@@ -540,9 +540,6 @@ export default function ShoppingList() {
         const doc = querySnapshot.docs[0]; // לוקחים את הראשון במקרה שיש כמה
         const existingItem = doc.data();
         
-        console.log('נמצא מוצר קיים בהיסטוריה שלנו:', doc.id, 
-          'שייך למשק בית:', existingItem.householdId || 'אישי',
-          'נוסף על ידי:', existingItem.addedBy);
         
         // עדכון הפריט
         await shoppingListService.updateItem(doc.id, {

@@ -79,7 +79,6 @@ export default function RedeemVouchers() {
     const tgt = Number(target);
     if (!tgt || tgt <= 0) return;
     
-    console.log('🧮 מחשב אופטימיזציה לשוברים...');
     
     const counts: Record<number, number> = {};
     vouchers.filter(v => v.storeName === selectedStore).forEach(v => {
@@ -99,14 +98,12 @@ export default function RedeemVouchers() {
     });
     setRemainingMap(rem);
     
-    console.log('✅ אופטימיזציה הושלמה');
   }, [target, vouchers, selectedStore]);
 
   // בניית רשימת השוברים עבור האשף לפי סדר ההמלצה (ערך גבוה -> נמוך) - עם memoization
   const buildWizardList = useMemo((): Voucher[] => {
     if (!result) return [];
     
-    console.log('📋 בונה רשימת שוברים לאשף...');
     
     // נעתיק מפת ספירה זמנית
     const needed: Record<number, number> = { ...result.used };

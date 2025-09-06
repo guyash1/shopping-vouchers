@@ -772,7 +772,6 @@ export const vouchersService = {
       const isPartial = voucherData.isPartial || false;
       
       if (!isPartial) {
-        console.log(`השובר ${voucherId} לא היה מסוג נצבר, מעדכן אותו להיות נצבר.`);
         // עדכון השובר להיות נצבר
         await updateDoc(voucherRef, {
           isPartial: true,
@@ -931,12 +930,10 @@ export const storageService = {
 
       // פענוח ה-URL והסרת פרמטרים
       const storagePath = decodeURIComponent(fullPath.split('?')[0]);
-      console.log('מוחק תמונה מנתיב:', storagePath);
 
       // מחיקת התמונה
       const imageRef = ref(storage, storagePath);
       await deleteObject(imageRef);
-      console.log('התמונה נמחקה בהצלחה');
     } catch (error: any) {
       // אם הקובץ לא נמצא, לא נזרוק שגיאה
       if (error.code === 'storage/object-not-found') {
