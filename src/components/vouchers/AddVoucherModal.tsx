@@ -72,14 +72,53 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // איפוס תמונה בלבד כשהמודל נסגר (לא איפוס כל הטופס)
+  // שמירה וטעינה של תמונה ב-localStorage (בנפרד מהטופס)
   useEffect(() => {
-    if (!isOpen) {
-      // איפוס רק התמונה (לא השדות)
-      setSelectedImage(null);
-      setImagePreview(null);
+    if (isOpen) {
+      // טעינת תמונה שמורה בפתיחת המודל
+      try {
+        const savedImageData = localStorage.getItem('addVoucherModal_imageData');
+        if (savedImageData) {
+          const { preview, fileName, fileType, fileSize } = JSON.parse(savedImageData);
+          setImagePreview(preview);
+          
+          // שחזור File object מה-base64
+          if (preview && fileName && fileType) {
+            fetch(preview)
+              .then(res => res.blob())
+              .then(blob => {
+                const file = new File([blob], fileName, { type: fileType });
+                setSelectedImage(file);
+              })
+              .catch(error => {
+                console.error('שגיאה בשחזור קובץ תמונה:', error);
+              });
+          }
+        }
+      } catch (error) {
+        console.error('שגיאה בטעינת תמונה שמורה:', error);
+        // ניקוי נתונים פגומים
+        localStorage.removeItem('addVoucherModal_imageData');
+      }
     }
   }, [isOpen]);
+
+  // שמירת התמונה כל פעם שהיא משתנה
+  useEffect(() => {
+    if (imagePreview && selectedImage) {
+      try {
+        const imageData = {
+          preview: imagePreview,
+          fileName: selectedImage.name,
+          fileType: selectedImage.type,
+          fileSize: selectedImage.size
+        };
+        localStorage.setItem('addVoucherModal_imageData', JSON.stringify(imageData));
+      } catch (error) {
+        console.error('שגיאה בשמירת תמונה:', error);
+      }
+    }
+  }, [imagePreview, selectedImage]);
 
   if (!isOpen) return null;
 
@@ -165,6 +204,13 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
       setSelectedImage(null);
       setImagePreview(null);
       clearPersistedData(); // ניקוי הנתונים השמורים רק אחרי שליחה מוצלחת
+      
+      // ניקוי תמונה שמורה
+      try {
+        localStorage.removeItem('addVoucherModal_imageData');
+      } catch (error) {
+        console.error('שגיאה בניקוי תמונה שמורה:', error);
+      }
       
       // סגירת המודל
       onClose();
