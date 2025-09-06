@@ -72,16 +72,14 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // איפוס הטופס כשהמודל נסגר
+  // איפוס תמונה בלבד כשהמודל נסגר (לא איפוס כל הטופס)
   useEffect(() => {
     if (!isOpen) {
-      // איפוס הטופס והתמונה
-      reset();
+      // איפוס רק התמונה (לא השדות)
       setSelectedImage(null);
       setImagePreview(null);
-      clearPersistedData(); // ניקוי הנתונים השמורים
     }
-  }, [isOpen, reset, clearPersistedData]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -166,6 +164,7 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
       reset();
       setSelectedImage(null);
       setImagePreview(null);
+      clearPersistedData(); // ניקוי הנתונים השמורים רק אחרי שליחה מוצלחת
       
       // סגירת המודל
       onClose();

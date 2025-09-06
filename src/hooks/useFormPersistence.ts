@@ -48,7 +48,7 @@ export function useFormPersistence<TFieldValues extends FieldValues>(
     saveOnlyNonEmpty = true 
   } = options;
 
-  // טעינת נתונים שמורים בטעינה ראשונית
+  // טעינת נתונים שמורים בטעינה ראשונית (רק פעם אחת)
   useEffect(() => {
     try {
       const savedData = localStorage.getItem(storageKey);
@@ -67,7 +67,7 @@ export function useFormPersistence<TFieldValues extends FieldValues>(
         Object.keys(filteredData).forEach(key => {
           const value = filteredData[key];
           if (!saveOnlyNonEmpty || (value !== '' && value !== null && value !== undefined)) {
-            form.setValue(key as any, value);
+            form.setValue(key as any, value, { shouldDirty: false, shouldValidate: false });
           }
         });
       }
@@ -76,7 +76,8 @@ export function useFormPersistence<TFieldValues extends FieldValues>(
       // ניקוי נתונים פגומים
       localStorage.removeItem(storageKey);
     }
-  }, [storageKey, form, excludeFields, saveOnlyNonEmpty]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]); // רק כשה-storageKey משתנה, לא בכל פעם
 
   // שמירת נתונים בכל שינוי
   useEffect(() => {

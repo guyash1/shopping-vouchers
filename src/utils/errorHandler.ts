@@ -143,10 +143,6 @@ class SecureErrorHandler {
       
       // ב-development mode - רושמים את השגיאה המלאה לקונסול
       if (this.isDevelopment) {
-        console.group('🚨 Error Details (Development Mode)');
-        console.error('Original error:', error);
-        console.log('Safe error returned:', safeError);
-        console.groupEnd();
       }
       
     } catch (processingError) {

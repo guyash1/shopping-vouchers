@@ -44,7 +44,6 @@ export function usePageVisibility(options: UsePageVisibilityOptions = {}): UsePa
 
     if (enableInactivityTimeout && isVisible) {
       inactivityTimerRef.current = setTimeout(() => {
-        console.log('⏰ עצירת listeners בגלל חוסר פעילות (10 דקות)');
         setIsActive(false);
       }, inactivityTimeout * 60 * 1000);
     }
@@ -57,11 +56,9 @@ export function usePageVisibility(options: UsePageVisibilityOptions = {}): UsePa
       setIsVisible(visible);
       
       if (visible) {
-        console.log('👁️ הטאב חזר להיות פעיל - הפעלת listeners מחדש');
         setIsActive(true);
         resetInactivityTimer();
       } else {
-        console.log('🙈 הטאב לא פעיל - עצירת listeners');
         setIsActive(false);
         if (inactivityTimerRef.current) {
           clearTimeout(inactivityTimerRef.current);
@@ -91,7 +88,6 @@ export function usePageVisibility(options: UsePageVisibilityOptions = {}): UsePa
     
     const handleUserActivity = () => {
       if (isVisible && !isActive) {
-        console.log('🔄 זוהתה פעילות משתמש - הפעלת listeners מחדש');
         setIsActive(true);
       }
       resetInactivityTimer();
@@ -111,13 +107,11 @@ export function usePageVisibility(options: UsePageVisibilityOptions = {}): UsePa
 
   // פונקציות לשליטה ידנית
   const forceActivate = useCallback(() => {
-    console.log('🔧 הפעלה ידנית של listeners');
     setIsActive(true);
     resetInactivityTimer();
   }, [resetInactivityTimer]);
 
   const forceDeactivate = useCallback(() => {
-    console.log('🔧 עצירה ידנית של listeners');
     setIsActive(false);
     if (inactivityTimerRef.current) {
       clearTimeout(inactivityTimerRef.current);
