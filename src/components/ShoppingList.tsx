@@ -252,23 +252,27 @@ export default function ShoppingList() {
   }, [isHistoryModalOpen, user, loadHistory]);
 
   // פונקציית עזר לבדיקה והוספת קטגוריה למוצר אם חסרה
-  const ensureItemHasCategory = async (item: Item) => {
-    // בדיקה מהירה - אם יש קטגוריה, לא צריך לעשות כלום
-    if (item.category) {
+  const ensureItemHasCategory = (item: Item) => {
+    // בדיקה מהירה - אם יש קטגוריה או אם היא כבר 'כללי', לא צריך לעשות כלום
+    if (item.category && item.category !== 'כללי') {
       return;
     }
     
-    // רק אם אין קטגוריה - קורא ל-AI
-    try {
-      const category = await aiService.categorizeItem(item.name);
-      await shoppingListService.updateItem(item.id, { category });
-      // עדכון הסטייט המקומי
-      setItems(prev => prev.map(i => 
-        i.id === item.id ? { ...i, category } : i
-      ));
-    } catch (error) {
-      console.error('שגיאה בסיווג מוצר:', error);
-    }
+    // רק אם אין קטגוריה או שהיא 'כללי' - קורא ל-AI ברקע
+    aiService.categorizeItem(item.name)
+      .then(async (category) => {
+        if (category && category !== 'כללי' && category !== item.category) {
+          // עדכון בדאטאבייס
+          await shoppingListService.updateItem(item.id, { category });
+          // עדכון הסטייט המקומי
+          setItems(prev => prev.map(i => 
+            i.id === item.id ? { ...i, category } : i
+          ));
+        }
+      })
+      .catch(error => {
+        console.error('שגיאה בסיווג מוצר ברקע:', error);
+      });
   };
 
   // הוספת פריט חדש לרשימת הקניות
@@ -368,21 +372,34 @@ export default function ShoppingList() {
         };
         const itemId = await shoppingListService.addItem(newItemData);
         
-        // יצירת האובייקט של המוצר החדש
-        const newItem = { ...newItemData, id: itemId, purchaseCount: 0, householdId: selectedHousehold ? selectedHousehold.id : null } as Item;
+        // יצירת האובייקט של המוצר החדש עם קטגוריה דפולטית
+        const newItem = { 
+          ...newItemData, 
+          id: itemId, 
+          purchaseCount: 0, 
+          category: 'כללי', // קטגוריה דפולטית להוספה מיידית
+          householdId: selectedHousehold ? selectedHousehold.id : null 
+        } as Item;
         
-        // קריאה לAI לקבלת הקטגוריה לפני הוספה לסטייט
-        try {
-          const category = await aiService.categorizeItem(itemName.trim());
-          newItem.category = category;
-          await shoppingListService.updateItem(itemId, { category });
-        } catch (error) {
-          console.error('שגיאה בסיווג מוצר:', error);
-          // אם נכשל AI, נוסיף בלי קטגוריה
-        }
-        
-        // הוספה לסטייט פעם אחת בלבד - עם או בלי קטגוריה
+        // הוספה מיידית לסטייט עם קטגוריה דפולטית
         setItems(prev => [...prev, newItem]);
+        
+        // קטגוריזציה ברקע (ללא המתנה)
+        aiService.categorizeItem(itemName.trim())
+          .then(async (category) => {
+            if (category !== 'כללי') {
+              // עדכון בדאטאבייס
+              await shoppingListService.updateItem(itemId, { category });
+              // עדכון לוקאלי
+              setItems(prev => prev.map(item => 
+                item.id === itemId ? { ...item, category } : item
+              ));
+            }
+          })
+          .catch(error => {
+            console.error('שגיאה בסיווג מוצר ברקע:', error);
+            // המוצר כבר נוסף עם קטגוריה דפולטית, אז לא צריך לעשות כלום
+          });
   
       }
     } catch (error) {
