@@ -81,7 +81,7 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
       try {
         const savedImageData = localStorage.getItem('addVoucherModal_imageData');
         if (savedImageData) {
-          const { preview, fileName, fileType, fileSize } = JSON.parse(savedImageData);
+          const { preview, fileName, fileType } = JSON.parse(savedImageData);
           setImagePreview(preview);
           
           // שחזור File object מה-base64
