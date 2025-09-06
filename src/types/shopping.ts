@@ -1,5 +1,20 @@
 export type ItemStatus = 'pending' | 'inCart' | 'missing' | 'partial' | 'purchased';
 
+export type ShoppingCategory = 
+  | 'פירות, ירקות ופיצוחים'
+  | 'מוצרי חלב וביצים'
+  | 'בשר, עוף ודגים'
+  | 'לחמים ומוצרי מאפה'
+  | 'משקאות, יין, אלכוהול וסנקים'
+  | 'מזון מקורר, קפוא ונקניקים'
+  | 'בישול אפיה ושימורים'
+  | 'חטיפים מתוקים ודגני בוקר'
+  | 'פארם וטיפוח'
+  | 'עולם התינוקות'
+  | 'ניקיון לבית וחד פעמי'
+  | 'ויטמינים ותוספי תזונה'
+  | 'כללי';
+
 export interface Item {
   id: string;
   name: string;
@@ -11,6 +26,7 @@ export interface Item {
   lastPartialPurchaseDate?: Date;
   householdId?: string;
   addedBy: string;
+  category?: ShoppingCategory;
 }
 
 export interface HelpModalProps {

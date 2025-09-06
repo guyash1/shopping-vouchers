@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { ShoppingCart, LogOut, HelpCircle, Home, Users } from "lucide-react";
+import { ShoppingCart, LogOut, HelpCircle, Home, Users, Milk, Apple, Beef, Fish, Cake, Candy, Coffee, Droplets, Heart, Package } from "lucide-react";
 import { useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp, getDoc, onSnapshot, orderBy } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { signOut } from 'firebase/auth';
 import Modal from 'react-modal';
-import { Item } from '../types/shopping';
+import { Item, ShoppingCategory } from '../types/shopping';
 import { HelpModal } from './shopping/HelpModal';
 import { HistoryModal } from './shopping/HistoryModal';
 import { EditQuantityModal } from './shopping/EditQuantityModal';
@@ -14,6 +14,7 @@ import { PartialItemModal } from './shopping/PartialItemModal';
 import { ShoppingItem } from './shopping/ShoppingItem';
 import { AddItemForm } from './shopping/AddItemForm';
 import { shoppingListService, storageService } from '../services/firebase';
+import { aiService } from '../services/ai.service';
 import { useHousehold } from '../contexts/HouseholdContext';
 import { usePageVisibility } from '../utils/usePageVisibility';
 
@@ -42,6 +43,38 @@ export default function ShoppingList() {
   const [frequentItems, setFrequentItems] = useState<string[]>([]);
   const [partialItems, setPartialItems] = useState<Item[]>([]);
   const [isShoppingActive, setIsShoppingActive] = useState(false);
+
+  // פונקציה לקבלת אייקון לקטגוריה
+  const getCategoryIcon = (category?: ShoppingCategory) => {
+    switch (category) {
+      case 'פירות, ירקות ופיצוחים':
+        return <Apple className="w-5 h-5 text-green-500" />;
+      case 'מוצרי חלב וביצים':
+        return <Milk className="w-5 h-5 text-blue-500" />;
+      case 'בשר, עוף ודגים':
+        return <Beef className="w-5 h-5 text-red-500" />;
+      case 'לחמים ומוצרי מאפה':
+        return <Cake className="w-5 h-5 text-amber-500" />;
+      case 'משקאות, יין, אלכוהול וסנקים':
+        return <Coffee className="w-5 h-5 text-purple-600" />;
+      case 'מזון מקורר, קפוא ונקניקים':
+        return <Fish className="w-5 h-5 text-cyan-500" />;
+      case 'בישול אפיה ושימורים':
+        return <Package className="w-5 h-5 text-yellow-600" />;
+      case 'חטיפים מתוקים ודגני בוקר':
+        return <Candy className="w-5 h-5 text-pink-500" />;
+      case 'פארם וטיפוח':
+        return <Heart className="w-5 h-5 text-purple-500" />;
+      case 'עולם התינוקות':
+        return <Heart className="w-5 h-5 text-pink-400" />;
+      case 'ניקיון לבית וחד פעמי':
+        return <Droplets className="w-5 h-5 text-blue-400" />;
+      case 'ויטמינים ותוספי תזונה':
+        return <Heart className="w-5 h-5 text-green-600" />;
+      default:
+        return <Package className="w-5 h-5 text-gray-500" />;
+    }
+  };
 
   // הסרת הכפילות: onSnapshot למטה מספק גם טעינה ראשונית וגם עדכונים בזמן אמת
 
@@ -102,7 +135,8 @@ export default function ShoppingList() {
           lastPurchaseDate: data.lastPurchaseDate?.toDate(),
           lastPartialPurchaseDate: data.lastPartialPurchaseDate?.toDate(),
           householdId: data.householdId,
-          addedBy: data.addedBy
+          addedBy: data.addedBy,
+          category: data.category
         } as Item;
       });
       setItems(liveItems);
@@ -152,7 +186,7 @@ export default function ShoppingList() {
       const querySnapshot = await getDocs(historyQuery);
 
       // קיבוץ לפי שם מוצר (case-insensitive) ושמירת ההופעה האחרונה בלבד
-      const grouped = new Map<string, { id: string; name: string; imageUrl?: string; purchaseCount: number; lastPurchaseDate?: Date; lastPartialPurchaseDate?: Date }>();
+      const grouped = new Map<string, { id: string; name: string; imageUrl?: string; purchaseCount: number; lastPurchaseDate?: Date; lastPartialPurchaseDate?: Date; category?: string }>();
 
       querySnapshot.forEach((snap) => {
         const data = snap.data();
@@ -166,7 +200,8 @@ export default function ShoppingList() {
           imageUrl: data.imageUrl || undefined,
           purchaseCount: data.purchaseCount || 0,
           lastPurchaseDate: data.lastPurchaseDate?.toDate(),
-          lastPartialPurchaseDate: data.lastPartialPurchaseDate?.toDate()
+          lastPartialPurchaseDate: data.lastPartialPurchaseDate?.toDate(),
+          category: data.category
         };
 
         const current = grouped.get(key);
@@ -179,7 +214,8 @@ export default function ShoppingList() {
             grouped.set(key, {
               ...incoming,
               imageUrl: incoming.imageUrl || current.imageUrl,
-              purchaseCount: Math.max(current.purchaseCount || 0, incoming.purchaseCount || 0)
+              purchaseCount: Math.max(current.purchaseCount || 0, incoming.purchaseCount || 0),
+              category: incoming.category || current.category
             });
           }
         }
@@ -214,6 +250,26 @@ export default function ShoppingList() {
       loadHistory();
     }
   }, [isHistoryModalOpen, user, loadHistory]);
+
+  // פונקציית עזר לבדיקה והוספת קטגוריה למוצר אם חסרה
+  const ensureItemHasCategory = async (item: Item) => {
+    // בדיקה מהירה - אם יש קטגוריה, לא צריך לעשות כלום
+    if (item.category) {
+      return;
+    }
+    
+    // רק אם אין קטגוריה - קורא ל-AI
+    try {
+      const category = await aiService.categorizeItem(item.name);
+      await shoppingListService.updateItem(item.id, { category });
+      // עדכון הסטייט המקומי
+      setItems(prev => prev.map(i => 
+        i.id === item.id ? { ...i, category } : i
+      ));
+    } catch (error) {
+      console.error('שגיאה בסיווג מוצר:', error);
+    }
+  };
 
   // הוספת פריט חדש לרשימת הקניות
   const handleAddItem = async (
@@ -291,6 +347,12 @@ export default function ShoppingList() {
             addedBy: user.uid
           } as Item];
         });
+
+        // בדיקה והוספת קטגוריה למוצר קיים שחזר לרשימה (ללא המתנה)
+        const updatedItem = items.find(i => i.id === pick.id) || pick.data;
+        if (updatedItem) {
+          ensureItemHasCategory({ ...updatedItem, id: pick.id, name: itemName.trim() } as Item);
+        }
       } else {
         // אין בכלל מסמך – נוסיף חדש
         let imageUrl = existingImageUrl;
@@ -305,7 +367,22 @@ export default function ShoppingList() {
           imageUrl: imageUrl || null
         };
         const itemId = await shoppingListService.addItem(newItemData);
-        setItems(prev => [...prev, { ...newItemData, id: itemId, purchaseCount: 0, householdId: selectedHousehold ? selectedHousehold.id : null } as Item]);
+        
+        // יצירת האובייקט של המוצר החדש
+        const newItem = { ...newItemData, id: itemId, purchaseCount: 0, householdId: selectedHousehold ? selectedHousehold.id : null } as Item;
+        
+        // קריאה לAI לקבלת הקטגוריה לפני הוספה לסטייט
+        try {
+          const category = await aiService.categorizeItem(itemName.trim());
+          newItem.category = category;
+          await shoppingListService.updateItem(itemId, { category });
+        } catch (error) {
+          console.error('שגיאה בסיווג מוצר:', error);
+          // אם נכשל AI, נוסיף בלי קטגוריה
+        }
+        
+        // הוספה לסטייט פעם אחת בלבד - עם או בלי קטגוריה
+        setItems(prev => [...prev, newItem]);
   
       }
     } catch (error) {
@@ -479,10 +556,19 @@ export default function ShoppingList() {
               purchaseCount: existingItem.purchaseCount || 0,
               lastPurchaseDate: existingItem.lastPurchaseDate?.toDate(),
               addedBy: existingItem.addedBy,
-              householdId: existingItem.householdId
+              householdId: existingItem.householdId,
+              category: existingItem.category
             } as Item];
           }
         });
+
+        // בדיקה והוספת קטגוריה למוצר מההיסטוריה (ללא המתנה)
+        const itemToCheck = {
+          id: doc.id,
+          name: itemName,
+          category: existingItem.category
+        } as Item;
+        ensureItemHasCategory(itemToCheck);
         
   
       } else {
@@ -713,6 +799,60 @@ export default function ShoppingList() {
   
   // התצוגה הראשית מציגה רק פריטים שלא purchased
   const displayItems = sortedItems;
+
+  // קיבוץ פריטים לפי קטגוריות
+  const groupedItems = useMemo(() => {
+    const groups: Record<string, Item[]> = {};
+    
+    displayItems.forEach(item => {
+      const category = item.category || 'כללי';
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(item);
+    });
+
+    // סדר קטגוריות מועדף
+    const categoryOrder = [
+      'פירות, ירקות ופיצוחים',
+      'מוצרי חלב וביצים',
+      'בשר, עוף ודגים',
+      'לחמים ומוצרי מאפה',
+      'משקאות, יין, אלכוהול וסנקים',
+      'מזון מקורר, קפוא ונקניקים',
+      'בישול אפיה ושימורים',
+      'חטיפים מתוקים ודגני בוקר',
+      'פארם וטיפוח',
+      'עולם התינוקות',
+      'ניקיון לבית וחד פעמי',
+      'ויטמינים ותוספי תזונה',
+      'כללי'
+    ];
+
+    const sortedGroups: Array<{ category: ShoppingCategory | 'כללי'; items: Item[] }> = [];
+    
+    // מוסיף קטגוריות לפי הסדר המועדף
+    categoryOrder.forEach(category => {
+      if (groups[category] && groups[category].length > 0) {
+        sortedGroups.push({ 
+          category: category as ShoppingCategory, 
+          items: groups[category] 
+        });
+      }
+    });
+    
+    // מוסיף קטגוריות אחרות שלא במסדר המועדף
+    Object.keys(groups).forEach(category => {
+      if (!categoryOrder.includes(category) && groups[category].length > 0) {
+        sortedGroups.push({ 
+          category: category as ShoppingCategory, 
+          items: groups[category] 
+        });
+      }
+    });
+    
+    return sortedGroups;
+  }, [displayItems]);
 
   // כאשר לוחצים על כפתור סיום קניות, מבטלים את מצב הקניות
   const handleFinishShopping = async () => {
@@ -1017,19 +1157,41 @@ export default function ShoppingList() {
           <p className="text-gray-600">טוען פריטים...</p>
         </div>
       ) : displayItems.length > 0 ? (
-        <div className="space-y-3">
-          {sortedItems.map(item => (
-            <ShoppingItem
-              key={item.id}
-              item={item}
-              onDelete={handleDeleteItem}
-              onEditQuantity={handleEditQuantity}
-              onToggleStatus={handleToggleStatus}
-              onUploadImage={handleUploadImage}
-              onChangeQuantity={async (id: string, newQuantity: number) => {
-                await handleSaveQuantity(id, newQuantity);
-              }}
-            />
+        <div className="space-y-6">
+          {groupedItems.map(group => (
+            <div key={group.category} className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+              {/* כותרת הקטגוריה */}
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {getCategoryIcon(group.category as ShoppingCategory)}
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      {group.category}
+                    </h3>
+                  </div>
+                  <span className="bg-white px-2 py-1 rounded-full text-sm font-medium text-gray-600 shadow-sm">
+                    {group.items.length} פריטים
+                  </span>
+                </div>
+              </div>
+              {/* פריטי הקטגוריה */}
+              <div className="divide-y divide-gray-100">
+                {group.items.map(item => (
+                  <div key={item.id} className="p-3">
+                    <ShoppingItem
+                      item={item}
+                      onDelete={handleDeleteItem}
+                      onEditQuantity={handleEditQuantity}
+                      onToggleStatus={handleToggleStatus}
+                      onUploadImage={handleUploadImage}
+                      onChangeQuantity={async (id: string, newQuantity: number) => {
+                        await handleSaveQuantity(id, newQuantity);
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           ))}
 
           {/* כפתור סיום קניות - מוצג רק כשיש פריטים בעגלה */}

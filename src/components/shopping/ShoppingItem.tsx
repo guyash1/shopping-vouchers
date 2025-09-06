@@ -61,148 +61,147 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
   };
 
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-lg shadow ${getItemBackgroundColor(item.status)} relative border-b border-gray-100`}>
-      <div className="flex-1 flex items-start gap-2">
-        {/* תמונת המוצר */}
-        <div className="flex-shrink-0">
-          {item.imageUrl ? (
-            <div className="relative group w-14 h-14">
-              <img 
-                src={item.imageUrl} 
-                alt={item.name} 
-                className="w-full h-full object-cover rounded cursor-pointer transition-transform duration-200 group-hover:scale-105" 
-                onClick={() => setIsImageModalOpen(true)}
+    <div className={`grid grid-cols-[56px_1fr_auto_auto] gap-3 p-3 rounded-lg shadow ${getItemBackgroundColor(item.status)} relative border-b border-gray-100 items-start`}>
+      {/* תמונת המוצר - עמודה קבועה */}
+      <div className="w-14 h-14">
+        {item.imageUrl ? (
+          <div className="relative group w-14 h-14">
+            <img 
+              src={item.imageUrl} 
+              alt={item.name} 
+              className="w-full h-full object-cover rounded cursor-pointer transition-transform duration-200 group-hover:scale-105" 
+              onClick={() => setIsImageModalOpen(true)}
+            />
+          </div>
+        ) : (
+          <div className="w-14 h-14 flex items-center justify-center border rounded border-gray-200 bg-gray-50">
+            <label className="flex items-center justify-center cursor-pointer w-full h-full">
+              <input 
+                type="file" 
+                accept="image/*"
+                className="hidden" 
+                onChange={handleImageUpload}
+                disabled={isUploading}
               />
-            </div>
-          ) : (
-            <div className="w-14 h-14 flex items-center justify-center border rounded border-gray-200 bg-gray-50">
-              <label className="flex items-center justify-center cursor-pointer w-full h-full">
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  className="hidden" 
-                  onChange={handleImageUpload}
-                  disabled={isUploading}
-                />
-                <Camera className={`${isUploading ? 'text-gray-400 animate-pulse' : 'text-gray-400'}`} size={20} />
-              </label>
-            </div>
-          )}
-        </div>
+              <Camera className={`${isUploading ? 'text-gray-400 animate-pulse' : 'text-gray-400'}`} size={20} />
+            </label>
+          </div>
+        )}
+      </div>
 
-        {/* פרטי המוצר */}
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-gray-800">{item.name}</span>
-                {/* בקרת כמות inline */}
-                <div className="inline-flex items-center bg-blue-50 rounded-md border border-blue-100 overflow-hidden">
-                  <button
-                    disabled={isUpdatingQty || item.quantity <= 1}
-                    onClick={async () => {
-                      if (item.quantity <= 1) return;
-                      try {
-                        setIsUpdatingQty(true);
-                        await onChangeQuantity(item.id, item.quantity - 1);
-                      } finally {
-                        setIsUpdatingQty(false);
-                      }
-                    }}
-                    className={`p-1 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-100`}
-                    aria-label="הפחת כמות"
-                  >
-                    <MinusCircle className="w-4 h-4 text-blue-600" />
-                  </button>
-                  <span className="px-2 font-semibold text-blue-700 select-none">{item.quantity}</span>
-                  <button
-                    disabled={isUpdatingQty}
-                    onClick={async () => {
-                      try {
-                        setIsUpdatingQty(true);
-                        await onChangeQuantity(item.id, item.quantity + 1);
-                      } finally {
-                        setIsUpdatingQty(false);
-                      }
-                    }}
-                    className={`p-1 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-100`}
-                    aria-label="הוסף כמות"
-                  >
-                    <PlusCircle className="w-4 h-4 text-blue-600" />
-                  </button>
-                </div>
-              </div>
-            </div>
+      {/* תוכן המוצר - עמודה גמישה */}
+      <div className="min-w-0">
+        {/* שם המוצר */}
+        <div className="font-medium text-gray-800 leading-tight mb-2 break-words">
+          {item.name}
+        </div>
+        
+        {/* כפתורי סטטוס */}
+        <div className="flex gap-2">
+          <div className="flex flex-col items-center">
             <button
-              onClick={() => onEditQuantity(item)}
-              className="p-1 text-gray-400 hover:text-blue-500 flex-shrink-0"
-              aria-label="ערוך כמות"
+              onClick={() => handleStatusToggle('inCart')}
+              className={`p-1.5 rounded-full hover:bg-green-100 ${
+                item.status === 'inCart' ? 'bg-green-100' : ''
+              }`}
+              aria-label="סמן כנמצא בעגלה"
             >
-              <Edit className="w-4 h-4" />
+              <ShoppingCart className={`w-4 h-4 ${
+                item.status === 'inCart' ? 'text-green-500' : 'text-gray-400'
+              }`} />
             </button>
+            <span className="text-[10px] text-gray-500 mt-1 leading-none">בעגלה</span>
           </div>
           
-          {/* כפתורי פעולה */}
-          <div className="flex items-center justify-between">
-            <div className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <button
-                  onClick={() => handleStatusToggle('inCart')}
-                  className={`p-1.5 rounded-full hover:bg-green-100 ${
-                    item.status === 'inCart' ? 'bg-green-100' : ''
-                  }`}
-                  aria-label="סמן כנמצא בעגלה"
-                >
-                  <ShoppingCart className={`w-4 h-4 ${
-                    item.status === 'inCart' ? 'text-green-500' : 'text-gray-400'
-                  }`} />
-                </button>
-                <span className="text-[10px] text-gray-500 mt-1 leading-none">בעגלה</span>
-              </div>
-              
-              <div className="flex flex-col items-center">
-                <button
-                  onClick={() => handleStatusToggle('partial')}
-                  className={`p-1.5 rounded-full hover:bg-yellow-100 ${
-                    item.status === 'partial' ? 'bg-yellow-100' : ''
-                  }`}
-                  aria-label="סמן כנלקח חלקית"
-                >
-                  <MinusCircle className={`w-4 h-4 ${
-                    item.status === 'partial' ? 'text-yellow-500' : 'text-gray-400'
-                  }`} />
-                </button>
-                <span className="text-[10px] text-gray-500 mt-1 leading-none">חלקי</span>
-              </div>
-              
-              <div className="flex flex-col items-center">
-                <button
-                  onClick={() => handleStatusToggle('missing')}
-                  className={`p-1.5 rounded-full hover:bg-red-100 ${
-                    item.status === 'missing' ? 'bg-red-100' : ''
-                  }`}
-                  aria-label="סמן כחסר במלאי"
-                >
-                  <AlertCircle className={`w-4 h-4 ${
-                    item.status === 'missing' ? 'text-red-500' : 'text-gray-400'
-                  }`} />
-                </button>
-                <span className="text-[10px] text-gray-500 mt-1 leading-none">חסר</span>
-              </div>
-            </div>
-            
-            <div className="flex flex-col items-center">
-              <button
-                onClick={() => onDelete(item.id)}
-                className="p-1.5 rounded-full hover:bg-gray-100"
-                aria-label="מחק פריט"
-              >
-                <X className="w-4 h-4 text-red-500" />
-              </button>
-              <span className="text-[10px] text-gray-500 mt-1 leading-none">מחק</span>
-            </div>
+          <div className="flex flex-col items-center">
+            <button
+              onClick={() => handleStatusToggle('partial')}
+              className={`p-1.5 rounded-full hover:bg-yellow-100 ${
+                item.status === 'partial' ? 'bg-yellow-100' : ''
+              }`}
+              aria-label="סמן כנלקח חלקית"
+            >
+              <MinusCircle className={`w-4 h-4 ${
+                item.status === 'partial' ? 'text-yellow-500' : 'text-gray-400'
+              }`} />
+            </button>
+            <span className="text-[10px] text-gray-500 mt-1 leading-none">חלקי</span>
+          </div>
+          
+          <div className="flex flex-col items-center">
+            <button
+              onClick={() => handleStatusToggle('missing')}
+              className={`p-1.5 rounded-full hover:bg-red-100 ${
+                item.status === 'missing' ? 'bg-red-100' : ''
+              }`}
+              aria-label="סמן כחסר במלאי"
+            >
+              <AlertCircle className={`w-4 h-4 ${
+                item.status === 'missing' ? 'text-red-500' : 'text-gray-400'
+              }`} />
+            </button>
+            <span className="text-[10px] text-gray-500 mt-1 leading-none">חסר</span>
           </div>
         </div>
+      </div>
+
+      {/* בקרת כמות - עמודה קבועה */}
+      <div className="flex flex-col items-center gap-1">
+        <div className="flex items-center bg-blue-50 rounded-md border border-blue-100 overflow-hidden">
+          <button
+            disabled={isUpdatingQty || item.quantity <= 1}
+            onClick={async () => {
+              if (item.quantity <= 1) return;
+              try {
+                setIsUpdatingQty(true);
+                await onChangeQuantity(item.id, item.quantity - 1);
+              } finally {
+                setIsUpdatingQty(false);
+              }
+            }}
+            className={`p-1 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-100`}
+            aria-label="הפחת כמות"
+          >
+            <MinusCircle className="w-4 h-4 text-blue-600" />
+          </button>
+          <span className="px-2 py-1 font-semibold text-blue-700 select-none min-w-[2rem] text-center">{item.quantity}</span>
+          <button
+            disabled={isUpdatingQty}
+            onClick={async () => {
+              try {
+                setIsUpdatingQty(true);
+                await onChangeQuantity(item.id, item.quantity + 1);
+              } finally {
+                setIsUpdatingQty(false);
+              }
+            }}
+            className={`p-1 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-100`}
+            aria-label="הוסף כמות"
+          >
+            <PlusCircle className="w-4 h-4 text-blue-600" />
+          </button>
+        </div>
+        {/* כפתור עריכה */}
+        <button
+          onClick={() => onEditQuantity(item)}
+          className="p-1 text-gray-400 hover:text-blue-500 rounded"
+          aria-label="ערוך כמות"
+        >
+          <Edit className="w-3 h-3" />
+        </button>
+        <span className="text-[10px] text-gray-500 mt-1 leading-none">עריכת כמות</span>
+      </div>
+
+      {/* כפתור מחיקה - עמודה קבועה */}
+      <div className="flex flex-col items-center">
+        <button
+          onClick={() => onDelete(item.id)}
+          className="p-2 rounded-full hover:bg-red-50"
+          aria-label="מחק פריט"
+        >
+          <X className="w-5 h-5 text-red-500" />
+        </button>
+        <span className="text-xs text-gray-600 mt-1 leading-none text-center">מחק</span>
       </div>
       
       {/* מודל תמונה מוגדלת - מודרני ו-responsive */}

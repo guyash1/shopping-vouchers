@@ -86,7 +86,8 @@ export const shoppingListService = {
           lastPurchaseDate: data.lastPurchaseDate?.toDate(),
           lastPartialPurchaseDate: data.lastPartialPurchaseDate?.toDate(),
           householdId: data.householdId,
-          addedBy: data.addedBy
+          addedBy: data.addedBy,
+          category: data.category
         } as Item;
         
         items.push(item);
@@ -267,7 +268,8 @@ export const shoppingListService = {
           lastPurchaseDate: data.lastPurchaseDate?.toDate(),
           lastPartialPurchaseDate: data.lastPartialPurchaseDate?.toDate(),
           householdId: data.householdId,
-          addedBy: data.addedBy
+          addedBy: data.addedBy,
+          category: data.category
         } as Item;
         
         items.push(item);
