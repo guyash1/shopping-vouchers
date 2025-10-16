@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Upload, Camera, ShoppingCart, Utensils, Droplet, ShoppingBag, Gift } from 'lucide-react';
 import { useFormPersistence } from '../../hooks/useFormPersistence';
+import { aiService } from '../../services/ai.service';
 
 // קטגוריות שוברים
 const VOUCHER_CATEGORIES = [
@@ -68,6 +69,7 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
   // State נוסף שלא חלק מהטופס
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [validatingImage, setValidatingImage] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -120,15 +122,39 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
     }
   }, [imagePreview, selectedImage]);
 
+  // פונקציה להסרת תמונה
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    
+    // ניקוי localStorage
+    try {
+      localStorage.removeItem('addVoucherModal_imageData');
+    } catch (error) {
+      console.error('שגיאה בניקוי תמונה שמורה:', error);
+    }
+    
+    // איפוס input fields
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
+  // פונקציה לסגירת המודל עם ניקוי תמונה
+  const handleClose = () => {
+    handleRemoveImage();
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
 
   // טיפול בשינוי תמונה
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
       // ולידציה בסיסית בצד לקוח
       if (!ALLOWED_TYPES.includes(file.type)) {
         alert('סוג קובץ לא נתמך. רק JPEG, PNG, GIF ו-WEBP מותרים');
@@ -138,13 +164,40 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
         alert('קובץ גדול מדי (מקסימום 3MB). נסה לכווץ את התמונה.');
         return;
       }
-      setSelectedImage(file);
+
+      setValidatingImage(true);
       
-      // יצירת URL לתצוגה מקדימה של התמונה
+      // Read file as data URL for AI validation
       const reader = new FileReader();
-      reader.onload = () => {
-        setImagePreview(reader.result as string);
+      reader.onload = async () => {
+        const imageDataUrl = reader.result as string;
+        
+        // Validate with AI before showing preview
+        try {
+          const validation = await aiService.validateImage(imageDataUrl, 'voucher');
+          
+          if (!validation.isValid) {
+            alert(`❌ התמונה לא מתאימה\n\n${validation.reason}\n\nאנא העלה תמונה של שובר/קופון עם ברקוד או קוד.`);
+            // Reset file input
+            e.target.value = '';
+            setValidatingImage(false);
+            return;
+          }
+
+          // If valid, set image for upload and preview
+          setSelectedImage(file);
+          setImagePreview(imageDataUrl);
+          
+        } catch (error) {
+          console.error('Error validating image:', error);
+          // On error, allow upload (fail open)
+          setSelectedImage(file);
+          setImagePreview(imageDataUrl);
+        } finally {
+          setValidatingImage(false);
+        }
       };
+      
       reader.readAsDataURL(file);
     }
   };
@@ -212,7 +265,7 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
         console.error('שגיאה בניקוי תמונה שמורה:', error);
       }
       
-      // סגירת המודל
+      // סגירת המודל (ללא ניקוי תמונה כי הצלחנו להוסיף)
       onClose();
     } catch (error) {
       console.error('שגיאה בהוספת שובר:', error);
@@ -234,7 +287,7 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 pb-16 overflow-y-auto">
       <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto relative shadow-xl my-auto">
-        <button onClick={onClose} className="absolute top-4 left-4 text-gray-500 hover:text-gray-700">
+        <button onClick={handleClose} className="absolute top-4 left-4 text-gray-500 hover:text-gray-700">
           <X className="w-5 h-5" />
         </button>
         
@@ -419,13 +472,10 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
                 />
                 <button
                   type="button"
-                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
-                  onClick={() => {
-                    setSelectedImage(null);
-                    setImagePreview(null);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                    if (cameraInputRef.current) cameraInputRef.current.value = '';
-                  }}
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors"
+                  onClick={handleRemoveImage}
+                  title="הסר תמונה"
+                  aria-label="הסר תמונה"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -472,16 +522,16 @@ export function AddVoucherModal({ isOpen, onClose, onAddVoucher }: AddVoucherMod
           <div className="flex justify-end space-x-3 rtl:space-x-reverse pt-2 sticky bottom-0 bg-white pb-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
-              disabled={isSubmitting}
+              disabled={isSubmitting || validatingImage}
             >
               ביטול
             </button>
             <button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-              disabled={isSubmitting}
+              className="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting || validatingImage}
             >
               {isSubmitting ? 'מוסיף...' : 'הוספת שובר'}
             </button>

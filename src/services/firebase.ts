@@ -12,12 +12,14 @@ import {
   serverTimestamp,
   Timestamp,
   getDoc,
-  deleteField
+  deleteField,
+  setDoc
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { Item } from '../types/shopping';
 import { Voucher } from '../types/vouchers';
 import { Household } from '../types/household';
+import { UserProfile } from '../types/user';
 
 // פונקציית עזר לאימות קלט - משופרת לאבטחה
 const sanitizeInput = (input: string): string => {
@@ -991,6 +993,12 @@ export const householdService = {
         return this.createHousehold(userId, name);
       }
       
+      // קבלת פרופיל המשתמש
+      const userProfile = await userService.getUserProfile(userId);
+      const displayName = userProfile
+        ? `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || userProfile.displayName
+        : auth.currentUser?.displayName || 'משתמש';
+
       const docRef = await addDoc(collection(db, 'households'), {
         name: sanitizedName,
         code,
@@ -998,7 +1006,7 @@ export const householdService = {
         members: {
           [userId]: {
             role: 'owner',
-            name: auth.currentUser?.displayName || 'משתמש חדש',
+            name: displayName,
             joinedAt: serverTimestamp()
           }
         },
@@ -1040,11 +1048,17 @@ export const householdService = {
         throw new Error('המשתמש כבר חבר במשק בית זה');
       }
       
+      // קבלת פרופיל המשתמש
+      const userProfile = await userService.getUserProfile(userId);
+      const displayName = userProfile
+        ? `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || userProfile.displayName
+        : auth.currentUser?.displayName || 'משתמש';
+      
       // הוספת המשתמש למשק הבית
       await updateDoc(doc(db, 'households', household.id), {
         [`members.${userId}`]: {
           role: 'member',
-          name: auth.currentUser?.displayName || 'משתמש חדש',
+          name: displayName,
           joinedAt: serverTimestamp()
         }
       });
@@ -1079,6 +1093,60 @@ export const householdService = {
       // מחיקת המשתמש ממשק הבית
       await updateDoc(householdRef, {
         [`members.${userId}`]: deleteField()
+      });
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // עדכון שם משק בית
+  async updateHouseholdName(householdId: string, newName: string): Promise<void> {
+    try {
+      if (!householdId || !newName.trim()) {
+        throw new Error('Household ID and name are required');
+      }
+      
+      const sanitizedName = sanitizeInput(newName);
+      const householdRef = doc(db, 'households', householdId);
+      
+      await updateDoc(householdRef, {
+        name: sanitizedName,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // הסרת חבר ממשק בית (רק מנהל יכול)
+  async removeMember(householdId: string, memberIdToRemove: string, requestingUserId: string): Promise<void> {
+    try {
+      if (!householdId || !memberIdToRemove || !requestingUserId) {
+        throw new Error('All parameters are required');
+      }
+      
+      const householdRef = doc(db, 'households', householdId);
+      const household = await getDoc(householdRef);
+      
+      if (!household.exists()) {
+        throw new Error('משק הבית לא נמצא');
+      }
+      
+      const householdData = household.data();
+      
+      // בדיקה שהמבקש הוא בעל משק הבית
+      if (householdData.ownerId !== requestingUserId) {
+        throw new Error('רק מנהל משק הבית יכול להסיר חברים');
+      }
+      
+      // לא ניתן להסיר את עצמך
+      if (memberIdToRemove === requestingUserId) {
+        throw new Error('לא ניתן להסיר את עצמך');
+      }
+      
+      // הסרת החבר
+      await updateDoc(householdRef, {
+        [`members.${memberIdToRemove}`]: deleteField()
       });
     } catch (error) {
       throw error;
@@ -1270,6 +1338,123 @@ export const householdService = {
 
       return households;
     } catch (error) {
+      throw error;
+    }
+  }
+};
+
+/**
+ * User Profile Service
+ * Manages user profiles in Firestore
+ */
+export const userService = {
+  /**
+   * Create or update user profile
+   */
+  async saveUserProfile(
+    uid: string,
+    email: string,
+    firstName?: string,
+    lastName?: string,
+    authProvider: 'email' | 'google' = 'email',
+    photoURL?: string
+  ): Promise<void> {
+    try {
+      const userRef = doc(db, 'users', uid);
+      const userDoc = await getDoc(userRef);
+      
+      const displayName = firstName && lastName 
+        ? `${firstName} ${lastName}`.trim()
+        : email.split('@')[0];
+
+      const profileData: Partial<UserProfile> = {
+        uid,
+        email,
+        authProvider,
+        displayName,
+        updatedAt: new Date()
+      };
+
+      // Add optional fields if provided
+      if (firstName) profileData.firstName = sanitizeInput(firstName);
+      if (lastName) profileData.lastName = sanitizeInput(lastName);
+      if (photoURL) profileData.photoURL = photoURL;
+
+      if (userDoc.exists()) {
+        // Update existing profile
+        await updateDoc(userRef, profileData as any);
+      } else {
+        // Create new profile
+        await setDoc(userRef, {
+          ...profileData,
+          createdAt: new Date()
+        });
+      }
+    } catch (error) {
+      console.error('Error saving user profile:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get user profile
+   */
+  async getUserProfile(uid: string): Promise<UserProfile | null> {
+    try {
+      const userRef = doc(db, 'users', uid);
+      const userDoc = await getDoc(userRef);
+
+      if (!userDoc.exists()) {
+        return null;
+      }
+
+      const data = userDoc.data();
+      return {
+        uid: data.uid,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        displayName: data.displayName,
+        photoURL: data.photoURL,
+        authProvider: data.authProvider || 'email',
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date()
+      };
+    } catch (error) {
+      console.error('Error getting user profile:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Update user profile
+   */
+  async updateUserProfile(
+    uid: string,
+    updates: Partial<Omit<UserProfile, 'uid' | 'email' | 'createdAt' | 'authProvider'>>
+  ): Promise<void> {
+    try {
+      const userRef = doc(db, 'users', uid);
+      
+      // Sanitize text fields
+      const sanitizedUpdates: any = {
+        ...updates,
+        updatedAt: new Date()
+      };
+
+      if (updates.firstName) {
+        sanitizedUpdates.firstName = sanitizeInput(updates.firstName);
+      }
+      if (updates.lastName) {
+        sanitizedUpdates.lastName = sanitizeInput(updates.lastName);
+      }
+      if (updates.displayName) {
+        sanitizedUpdates.displayName = sanitizeInput(updates.displayName);
+      }
+
+      await updateDoc(userRef, sanitizedUpdates);
+    } catch (error) {
+      console.error('Error updating user profile:', error);
       throw error;
     }
   }

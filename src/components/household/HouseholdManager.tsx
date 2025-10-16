@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Home, Users, Copy, LogOut } from 'lucide-react';
-import { householdService } from '../../services/firebase';
+import { householdService, userService } from '../../services/firebase';
 import { Household } from '../../types/household';
+import { UserProfile } from '../../types/user';
 import { auth } from '../../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 
@@ -14,6 +15,7 @@ interface HouseholdManagerProps {
 export function HouseholdManager({ onClose, onSuccess, initialMode }: HouseholdManagerProps) {
   const [user] = useAuthState(auth);
   const [household, setHousehold] = useState<Household | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isCreating, setIsCreating] = useState(initialMode === 'create');
   const [isJoining, setIsJoining] = useState(initialMode === 'join');
   const [householdName, setHouseholdName] = useState('');
@@ -26,8 +28,12 @@ export function HouseholdManager({ onClose, onSuccess, initialMode }: HouseholdM
     if (!user) return;
     try {
       setLoading(true);
-      const householdData = await householdService.getUserHousehold(user.uid);
+      const [householdData, profileData] = await Promise.all([
+        householdService.getUserHousehold(user.uid),
+        userService.getUserProfile(user.uid)
+      ]);
       setHousehold(householdData);
+      setUserProfile(profileData);
     } catch (error) {
       setError('שגיאה בטעינת משק הבית');
     } finally {

@@ -5,7 +5,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import ShoppingList from './components/ShoppingList';
 import Vouchers from './components/Vouchers';
 import { ScrollText, Receipt, BarChart3, Wallet } from "lucide-react";
-import { HouseholdProvider } from './contexts/HouseholdContext';
+import { HouseholdProvider, useHousehold } from './contexts/HouseholdContext';
 import { VouchersProvider } from './contexts/VouchersContext';
 import { AuthModalProvider } from './contexts/AuthModalContext';
 import { HouseholdSwitcherModal } from './components/household/HouseholdSwitcherModal';
@@ -73,12 +73,37 @@ function BottomNavbar() {
 function AppContent() {
   const [isSwitcherOpen, setSwitcherOpen] = React.useState(false);
   const { isOpen, actionType, closeAuthModal } = useAuthModal();
+  const { needsOnboarding, loading: householdLoading, refreshHouseholds } = useHousehold();
 
   React.useEffect(() => {
     const handler = () => setSwitcherOpen(true);
     window.addEventListener('openHouseholdSwitcher', handler);
     return () => window.removeEventListener('openHouseholdSwitcher', handler);
   }, []);
+
+  // Auto-open household selector for new users
+  React.useEffect(() => {
+    if (needsOnboarding && !householdLoading) {
+      setSwitcherOpen(true);
+    }
+  }, [needsOnboarding, householdLoading]);
+
+  const handleSwitcherClose = () => {
+    setSwitcherOpen(false);
+  };
+
+  const handleSwitcherSuccess = () => {
+    refreshHouseholds();
+    setSwitcherOpen(false);
+    
+    // Open help modal for first-time users
+    if (needsOnboarding) {
+      setTimeout(() => {
+        const event = new CustomEvent('openHelpModal');
+        window.dispatchEvent(event);
+      }, 500);
+    }
+  };
 
   return (
     <div dir="rtl" className="min-h-screen bg-gray-50">
@@ -91,7 +116,11 @@ function AppContent() {
         </Routes>
       </main>
       <BottomNavbar />
-      <HouseholdSwitcherModal isOpen={isSwitcherOpen} onClose={() => setSwitcherOpen(false)} />
+      <HouseholdSwitcherModal 
+        isOpen={isSwitcherOpen} 
+        onClose={handleSwitcherClose}
+        onSuccess={handleSwitcherSuccess}
+      />
       <AuthModal isOpen={isOpen} onClose={closeAuthModal} actionType={actionType} />
     </div>
   );

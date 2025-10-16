@@ -49,7 +49,7 @@ export default function Header({
               </h1>
               {user && selectedHousehold ? (
                 <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Users className="w-3 h-3" />
+                  <Users className="w-3 h-3" aria-label="משק בית" />
                   <span>{selectedHousehold.name}</span>
                 </div>
               ) : !user ? (

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Plus, History, Camera } from "lucide-react";
+import { aiService } from '../../services/ai.service';
 
 interface HistoryItem {
   name: string;
@@ -24,6 +25,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [validatingImage, setValidatingImage] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -119,16 +121,42 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedImage(file);
+      setValidatingImage(true);
       
-      // יצירת תצוגה מקדימה של התמונה
+      // Read file as data URL
       const reader = new FileReader();
-      reader.onload = (event) => {
-        setImagePreview(event.target?.result as string);
+      reader.onload = async (event) => {
+        const imageDataUrl = event.target?.result as string;
+        
+        try {
+          // Validate with AI before showing preview
+          const validation = await aiService.validateImage(imageDataUrl, 'product');
+          
+          if (!validation.isValid) {
+            alert(`❌ התמונה לא מתאימה\n\n${validation.reason}\n\nאנא העלה תמונה של מוצר שקונים בחנות.`);
+            // Reset file input
+            e.target.value = '';
+            setValidatingImage(false);
+            return;
+          }
+
+          // If valid, set image for upload and preview
+          setSelectedImage(file);
+          setImagePreview(imageDataUrl);
+          
+        } catch (error) {
+          console.error('Error validating image:', error);
+          // On error, allow upload (fail open)
+          setSelectedImage(file);
+          setImagePreview(imageDataUrl);
+        } finally {
+          setValidatingImage(false);
+        }
       };
+      
       reader.readAsDataURL(file);
     }
   };
@@ -287,7 +315,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
         />
         <button
           type="submit"
-          disabled={loading || !inputValue.trim()}
+          disabled={loading || validatingImage || !inputValue.trim()}
           className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="הוספת פריט חדש"
         >

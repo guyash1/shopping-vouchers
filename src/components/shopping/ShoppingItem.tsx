@@ -121,10 +121,11 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
                 item.status === 'inCart' ? 'bg-green-100' : ''
               }`}
               aria-label="סמן כנמצא בעגלה"
+              title="בעגלה"
             >
               <ShoppingCart className={`w-4 h-4 ${
                 item.status === 'inCart' ? 'text-green-500' : 'text-gray-400'
-              }`} />
+              }`} aria-hidden="true" />
             </button>
             <span className="text-[10px] text-gray-500 mt-1 leading-none">בעגלה</span>
           </div>
@@ -151,10 +152,11 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
                 item.status === 'missing' ? 'bg-red-100' : ''
               }`}
               aria-label="סמן כחסר במלאי"
+              title="חסר"
             >
               <AlertCircle className={`w-4 h-4 ${
                 item.status === 'missing' ? 'text-red-500' : 'text-gray-400'
-              }`} />
+              }`} aria-hidden="true" />
             </button>
             <span className="text-[10px] text-gray-500 mt-1 leading-none">חסר</span>
           </div>
@@ -177,8 +179,9 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
             }}
             className={`p-1 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-100`}
             aria-label="הפחת כמות"
+            title="הפחת כמות"
           >
-            <MinusCircle className="w-4 h-4 text-blue-600" />
+            <MinusCircle className="w-4 h-4 text-blue-600" aria-hidden="true" />
           </button>
           <span className="px-2 py-1 font-semibold text-blue-700 select-none min-w-[2rem] text-center">{item.quantity}</span>
           <button
@@ -193,8 +196,9 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
             }}
             className={`p-1 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-100`}
             aria-label="הוספת כמות"
+            title="הגדל כמות"
           >
-            <PlusCircle className="w-4 h-4 text-blue-600" />
+            <PlusCircle className="w-4 h-4 text-blue-600" aria-hidden="true" />
           </button>
         </div>
         {/* כפתור עריכה */}

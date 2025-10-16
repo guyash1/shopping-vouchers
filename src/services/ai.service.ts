@@ -2,6 +2,14 @@ import OpenAI from 'openai';
 import { ShoppingCategory } from '../types/shopping';
 import { openaiConfig } from '../config/ai.config';
 
+export interface ImageValidationResult {
+  isValid: boolean;
+  reason?: string;
+  confidence: number;
+}
+
+export type ImageType = 'product' | 'voucher';
+
 export const SHOPPING_CATEGORIES: ShoppingCategory[] = [
   'פירות, ירקות ופיצוחים',
   'מוצרי חלב וביצים',
@@ -18,7 +26,106 @@ export const SHOPPING_CATEGORIES: ShoppingCategory[] = [
   'כללי'
 ];
 
+/**
+ * Validate image using AI vision to ensure it's appropriate for the context
+ * Uses GPT-4o-mini vision for cost-effective validation (~$0.0001-0.0003 per image)
+ */
+async function validateImage(
+  imageDataUrl: string,
+  imageType: ImageType
+): Promise<ImageValidationResult> {
+  if (!openaiConfig.apiKey) {
+    console.warn('OpenAI API key not configured, skipping image validation');
+    return { isValid: true, confidence: 0 };
+  }
+
+  try {
+    const openai = new OpenAI({
+      apiKey: openaiConfig.apiKey,
+      dangerouslyAllowBrowser: true
+    });
+
+    const systemPrompt = imageType === 'product' 
+      ? `You are an image validator for a shopping list app. Verify if the image shows a PRODUCT that people buy in stores.
+
+ACCEPT: Food, beverages, household items, cosmetics, medicines, baby products, cleaning supplies, any purchasable product.
+
+REJECT: People, selfies, landscapes, buildings, random objects not for sale, abstract images.
+
+Respond ONLY in this exact JSON format: {"isValid": true/false, "reason": "brief explanation in Hebrew", "confidence": 0-100}`
+      : `You are an image validator for a voucher app. Verify if the image shows a VOUCHER, COUPON, or GIFT CARD.
+
+ACCEPT: 
+- Barcodes (any type)
+- QR codes
+- Voucher cards, gift cards
+- Coupon screenshots (including digital coupons with URLs/links)
+- Messages/screenshots containing voucher codes or links
+- Promotional codes
+- Discount tickets
+- Any digital voucher or coupon image
+
+REJECT: 
+- People, selfies, landscapes
+- Regular products without voucher codes
+- Random screenshots (not vouchers)
+- Personal documents, IDs
+
+Respond ONLY in this exact JSON format: {"isValid": true/false, "reason": "brief explanation in Hebrew", "confidence": 0-100}`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: imageType === 'product' 
+                ? 'האם זו תמונה של מוצר שקונים בחנות?' 
+                : 'האם זו תמונה של שובר/קופון/ברקוד?'
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageDataUrl,
+                detail: 'low' // Low detail = cheaper + faster
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 150,
+      temperature: 0.2,
+    });
+
+    const content = response.choices[0]?.message?.content?.trim();
+
+    if (!content) {
+      throw new Error('Empty response from OpenAI');
+    }
+
+    // Parse JSON response
+    const result: ImageValidationResult = JSON.parse(content);
+    return result;
+
+  } catch (error) {
+    console.error('Image validation error:', error);
+    // On error, allow upload (fail open) but log it
+    return { 
+      isValid: true, 
+      reason: 'לא ניתן לאמת את התמונה',
+      confidence: 0 
+    };
+  }
+}
+
 export const aiService = {
+  validateImage,
   async categorizeItem(itemName: string): Promise<ShoppingCategory> {
     try {
       if (!openaiConfig.apiKey) {

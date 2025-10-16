@@ -12,11 +12,14 @@ import {
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Eye, EyeOff, Mail, Lock, LogIn, UserPlus, LogOut } from 'lucide-react';
 import Logo from './shared/Logo';
+import { userService } from '../services/firebase';
 
 export function Auth() {
   const [user, loading, error] = useAuthState(auth);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -25,7 +28,20 @@ export function Auth() {
     e.preventDefault();
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        if (!firstName.trim() || !lastName.trim()) {
+          alert('נא למלא שם פרטי ושם משפחה');
+          return;
+        }
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // Save user profile to Firestore
+        await userService.saveUserProfile(
+          userCredential.user.uid,
+          userCredential.user.email!,
+          firstName,
+          lastName,
+          'email'
+        );
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -39,7 +55,23 @@ export function Auth() {
     const provider = new GoogleAuthProvider();
 
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      
+      // Save/update user profile for Google users
+      const user = result.user;
+      const displayName = user.displayName || '';
+      const nameParts = displayName.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      await userService.saveUserProfile(
+        user.uid,
+        user.email!,
+        firstName,
+        lastName,
+        'google',
+        user.photoURL || undefined
+      );
     } catch (error: any) {
       if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/popup-closed-by-user') {
         try {
@@ -139,6 +171,38 @@ export function Auth() {
         </div>
         
         <form onSubmit={handleAuth} className="space-y-4">
+          {isSignUp && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span>שם פרטי</span>
+                </label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="למשל: אבי"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-right"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span>שם משפחה</span>
+                </label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="למשל: כהן"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-right"
+                  required
+                />
+              </div>
+            </>
+          )}
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
               <Mail className="w-4 h-4" />

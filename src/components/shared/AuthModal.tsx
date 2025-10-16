@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import Logo from './Logo';
 import { AuthActionType } from '../../contexts/AuthModalContext';
+import { userService } from '../../services/firebase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -65,6 +66,8 @@ const ACTION_MESSAGES = {
 export default function AuthModal({ isOpen, onClose, actionType }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState('');
@@ -81,7 +84,21 @@ export default function AuthModal({ isOpen, onClose, actionType }: AuthModalProp
 
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        if (!firstName.trim() || !lastName.trim()) {
+          setError('נא למלא שם פרטי ושם משפחה');
+          setLoading(false);
+          return;
+        }
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // Save user profile to Firestore
+        await userService.saveUserProfile(
+          userCredential.user.uid,
+          userCredential.user.email!,
+          firstName,
+          lastName,
+          'email'
+        );
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -110,7 +127,24 @@ export default function AuthModal({ isOpen, onClose, actionType }: AuthModalProp
     setLoading(true);
 
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      
+      // Save/update user profile for Google users
+      const user = result.user;
+      const displayName = user.displayName || '';
+      const nameParts = displayName.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      await userService.saveUserProfile(
+        user.uid,
+        user.email!,
+        firstName,
+        lastName,
+        'google',
+        user.photoURL || undefined
+      );
+      
       onClose();
     } catch (error: any) {
       if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/popup-closed-by-user') {
@@ -131,6 +165,8 @@ export default function AuthModal({ isOpen, onClose, actionType }: AuthModalProp
   const resetForm = () => {
     setEmail('');
     setPassword('');
+    setFirstName('');
+    setLastName('');
     setShowPassword(false);
     setError('');
     setLoading(false);
@@ -215,6 +251,40 @@ export default function AuthModal({ isOpen, onClose, actionType }: AuthModalProp
 
           {/* Email/Password Form */}
           <form onSubmit={handleAuth} className="space-y-4">
+            {isSignUp && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <span>שם פרטי</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="למשל: אבי"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-right transition-all"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <span>שם משפחה</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="למשל: כהן"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-right transition-all"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+              </>
+            )}
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
                 <Mail className="w-4 h-4" />

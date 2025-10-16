@@ -208,28 +208,55 @@ export default function RedeemVouchers() {
       <Header title="מימוש אופטימלי" showHouseholdSwitcher={false} />
       
       <div className="max-w-md mx-auto p-4 space-y-4 pb-24">
-      <select
-        className="w-full border rounded p-2 mb-2 text-right"
-        value={selectedStore}
-        onChange={e => setSelectedStore(e.target.value)}
-      >
-        <option value="" disabled>בחר חנות</option>
-        {stores.map(s => (
-          <option key={s} value={s}>{s}</option>
-        ))}
-      </select>
-      <div className="flex gap-2">
-        <input
-          type="number"
-          value={target}
-          onChange={e => setTarget(e.target.value)}
-          placeholder="סכום קנייה (₪)"
-          className="flex-1 border rounded p-2 text-right"
-        />
-        <button onClick={handleCalc} className="bg-blue-600 text-white px-4 rounded">חשב</button>
-      </div>
+      
+      {/* Empty state for no vouchers */}
+      {vouchers.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="w-24 h-24 mx-auto mb-6 bg-blue-50 rounded-full flex items-center justify-center">
+            <svg className="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-3">אין שוברים זמינים</h3>
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            כדי להשתמש במחשבון המימוש האופטימלי,<br />
+            צריך להוסיף שוברים קודם. אחרי שתוסיף שוברים<br />
+            תוכל לקבל המלצות איך לנצל אותם במיטב!
+          </p>
+          <div className="bg-blue-50 rounded-lg p-4">
+            <p className="text-sm text-blue-800 font-medium mb-2">💡 איך זה עובד:</p>
+            <p className="text-sm text-blue-700">
+              1. הוסף שוברים בעמוד "שוברים"<br />
+              2. חזור לכאן וקבל המלצות אופטימליות
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <select
+            className="w-full border rounded p-2 mb-2 text-right"
+            value={selectedStore}
+            onChange={e => setSelectedStore(e.target.value)}
+          >
+            <option value="" disabled>בחר חנות</option>
+            {stores.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={target}
+              onChange={e => setTarget(e.target.value)}
+              placeholder="סכום קנייה (₪)"
+              className="flex-1 border rounded p-2 text-right"
+            />
+            <button onClick={handleCalc} className="bg-blue-600 text-white px-4 rounded">חשב</button>
+          </div>
+        </>
+      )}
 
-      {result && (
+      {vouchers.length > 0 && result && (
         <div className="bg-white shadow rounded p-4 space-y-2">
           <p className="font-semibold">סכום מומש: ₪{result.sum.toLocaleString()}</p>
           <p className="font-semibold">שוברים שיש לנצל ({selectedStore}):</p>

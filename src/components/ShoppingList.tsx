@@ -18,6 +18,7 @@ import { aiService } from '../services/ai.service';
 import { useHousehold } from '../contexts/HouseholdContext';
 import { usePageVisibility } from '../utils/usePageVisibility';
 import { useAuthModal } from '../contexts/AuthModalContext';
+import { useFirstTimeUser } from '../hooks/useFirstTimeUser';
 
 Modal.setAppElement('#root');
 
@@ -25,11 +26,28 @@ export default function ShoppingList() {
   const { selectedHousehold } = useHousehold();
   const [user] = useAuthState(auth);
   const { openAuthModal } = useAuthModal();
+  const { shouldShowOnboarding, markOnboardingAsSeen } = useFirstTimeUser();
   const { isActive } = usePageVisibility({ inactivityTimeout: 10, enableInactivityTimeout: true });
   const location = useLocation();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  
+  // Show onboarding for first-time users
+  useEffect(() => {
+    if (shouldShowOnboarding && !isHelpModalOpen) {
+      setIsHelpModalOpen(true);
+    }
+  }, [shouldShowOnboarding, isHelpModalOpen]);
+
+  // Listen for manual help modal trigger (e.g. after household creation)
+  useEffect(() => {
+    const handler = () => {
+      setIsHelpModalOpen(true);
+    };
+    window.addEventListener('openHelpModal', handler);
+    return () => window.removeEventListener('openHelpModal', handler);
+  }, []);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isEditQuantityModalOpen, setIsEditQuantityModalOpen] = useState(false);
   const [isPartialItemModalOpen, setIsPartialItemModalOpen] = useState(false);
@@ -289,6 +307,15 @@ export default function ShoppingList() {
     
     if (!user) {
       openAuthModal('add-item');
+      return;
+    }
+
+    if (!selectedHousehold) {
+      const confirmed = window.confirm('כדי להוסיף מוצרים, צריך להיות חלק ממשק בית.\n\nלפתוח את ניהול משק הבית?');
+      if (confirmed) {
+        const event = new CustomEvent('openHouseholdSwitcher');
+        window.dispatchEvent(event);
+      }
       return;
     }
     
@@ -706,6 +733,21 @@ export default function ShoppingList() {
         
         return '';
       } else {
+        // Validate image with AI before upload
+        const reader = new FileReader();
+        const imageDataUrl = await new Promise<string>((resolve, reject) => {
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const validation = await aiService.validateImage(imageDataUrl, 'product');
+        
+        if (!validation.isValid) {
+          alert(`❌ התמונה לא מתאימה\n\n${validation.reason}\n\nאנא העלה תמונה של מוצר שקונים בחנות.`);
+          throw new Error('Image validation failed');
+        }
+
         // העלאת תמונה חדשה
         const imageUrl = await storageService.uploadImage(user.uid, file, 'items');
         await shoppingListService.updateItem(itemId, { imageUrl });
@@ -939,10 +981,18 @@ export default function ShoppingList() {
 
     try {
       const itemRef = doc(db, 'items', id);
+      
+      // Update the name first
       await updateDoc(itemRef, {
         name: newName.trim(),
         updatedAt: serverTimestamp()
       });
+
+      // Re-categorize in the background (don't wait)
+      const updatedItem = items.find(i => i.id === id);
+      if (updatedItem) {
+        ensureItemHasCategory({ ...updatedItem, name: newName.trim() } as Item);
+      }
     } catch (error) {
       console.error('Error updating item name:', error);
       alert('שגיאה בעדכון שם המוצר');
@@ -1222,7 +1272,9 @@ export default function ShoppingList() {
       ) : (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <div className="flex justify-center mb-4">
-            <ShoppingCart className="w-12 h-12 text-gray-400" />
+            <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
+              <ShoppingCart className="w-9 h-9 text-white" />
+            </div>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-1">הרשימה ריקה</h3>
           <p className="text-gray-500">
@@ -1232,8 +1284,11 @@ export default function ShoppingList() {
       )}
 
       <HelpModal 
-        isOpen={isHelpModalOpen} 
-        onClose={() => setIsHelpModalOpen(false)} 
+        isOpen={isHelpModalOpen}
+        onClose={() => {
+          setIsHelpModalOpen(false);
+          markOnboardingAsSeen();
+        }}
       />
 
         <HistoryModal

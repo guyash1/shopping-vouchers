@@ -9,6 +9,8 @@ interface HouseholdContextType {
   households: Household[];
   selectedHousehold: Household | null;
   personalMode: boolean; // true when no household selected
+  needsOnboarding: boolean; // true when user has no household
+  loading: boolean;
   setSelectedHousehold: (household: Household | null) => void;
   refreshHouseholds: () => Promise<void>;
 }
@@ -29,6 +31,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
   const [user] = useAuthState(auth);
   const [households, setHouseholds] = useState<Household[]>([]);
   const [selectedHousehold, setSelectedHouseholdState] = useState<Household | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // קריאת cache מהlocalStorage מאובטח
   const getCachedHouseholds = (userId: string): Household[] | null => {
@@ -76,10 +79,13 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
   const loadHouseholds = async (forceRefresh = false) => {
     if (!user) {
       setHouseholds([]);
+      setLoading(false);
       return;
     }
 
     try {
+      setLoading(true);
+      
       // קודם ננסה לטעון מהcache (אלא אם כן נדרש refresh)
       if (!forceRefresh) {
         const cachedHouseholds = getCachedHouseholds(user.uid);
@@ -91,6 +97,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         ? cachedHouseholds.find((h: Household) => h.id === savedId) || (cachedHouseholds.length > 0 ? cachedHouseholds[0] : null)
         : cachedHouseholds.length > 0 ? cachedHouseholds[0] : null;
           setSelectedHouseholdState(initial);
+          setLoading(false);
           return; // יציאה כאן - השתמשנו בcache
         }
       }
@@ -111,6 +118,8 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       setSelectedHouseholdState(initial);
     } catch (error) {
       console.error('שגיאה בטעינת משקי בית:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -134,10 +143,14 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     await loadHouseholds(true); // forceRefresh = true
   };
 
+  const needsOnboarding = user !== null && !loading && households.length === 0;
+
   const value: HouseholdContextType = {
     households,
     selectedHousehold,
     personalMode: selectedHousehold === null,
+    needsOnboarding,
+    loading,
     setSelectedHousehold,
     refreshHouseholds,
   };
