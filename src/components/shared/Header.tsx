@@ -29,6 +29,13 @@ export default function Header({
     window.dispatchEvent(event);
   };
 
+  const handleLogout = () => {
+    const confirmed = window.confirm('האם להתנתק מהחשבון?');
+    if (confirmed) {
+      signOut(auth);
+    }
+  };
+
   return (
     <div className="bg-white border-b sticky top-0 z-40 shadow-sm">
       <div className="max-w-md mx-auto px-4 py-3">
@@ -77,7 +84,7 @@ export default function Header({
 
             {user ? (
               <button
-                onClick={() => signOut(auth)}
+                onClick={handleLogout}
                 className="p-2 rounded-full hover:bg-gray-100 transition-colors"
                 aria-label="התנתקות"
                 title="התנתקות"

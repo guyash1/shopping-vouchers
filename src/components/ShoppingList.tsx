@@ -926,6 +926,29 @@ export default function ShoppingList() {
     setIsShoppingActive(!isShoppingActive);
   };
 
+  // פונקציה לעריכת שם המוצר
+  const handleEditName = async (id: string, newName: string) => {
+    if (!user) {
+      openAuthModal('edit');
+      return;
+    }
+
+    if (!newName.trim()) {
+      return;
+    }
+
+    try {
+      const itemRef = doc(db, 'items', id);
+      await updateDoc(itemRef, {
+        name: newName.trim(),
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error updating item name:', error);
+      alert('שגיאה בעדכון שם המוצר');
+    }
+  };
+
   // טיפול בפריטים שנקנו במלואם
   const handleProcessInCartItems = async (itemsInCart: Item[]) => {
     try {
@@ -1176,6 +1199,7 @@ export default function ShoppingList() {
                       onChangeQuantity={async (id: string, newQuantity: number) => {
                         await handleSaveQuantity(id, newQuantity);
                       }}
+                      onEditName={handleEditName}
                     />
                   </div>
                 ))}

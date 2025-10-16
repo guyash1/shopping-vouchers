@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ShoppingCart, AlertCircle, MinusCircle, PlusCircle, X, Edit, Camera, RefreshCw, Trash2 } from 'lucide-react';
+import { ShoppingCart, AlertCircle, MinusCircle, PlusCircle, X, Edit, Camera, Trash2, RefreshCw } from 'lucide-react';
 import { Item } from '../../types/shopping';
 import Modal from 'react-modal';
+import { EditNameModal } from './EditNameModal';
 
 interface ShoppingItemProps {
   item: Item;
@@ -10,6 +11,7 @@ interface ShoppingItemProps {
   onToggleStatus: (id: string, status: Item['status']) => void;
   onUploadImage: (file: File | null, itemId: string) => Promise<string>;
   onChangeQuantity: (id: string, newQuantity: number) => Promise<void>;
+  onEditName?: (id: string, newName: string) => Promise<void>;
 }
 
 export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({ 
@@ -18,12 +20,14 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
   onEditQuantity, 
   onToggleStatus,
   onUploadImage,
-  onChangeQuantity
+  onChangeQuantity,
+  onEditName
 }) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUpdatingQty, setIsUpdatingQty] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isEditNameModalOpen, setIsEditNameModalOpen] = useState(false);
   
   const getItemBackgroundColor = (status: Item['status']) => {
     switch (status) {
@@ -92,8 +96,20 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
       {/* תוכן המוצר - עמודה גמישה */}
       <div className="min-w-0">
         {/* שם המוצר */}
-        <div className="font-medium text-gray-800 leading-tight mb-2 break-words">
-          {item.name}
+        <div className="flex items-center gap-1 mb-2">
+          <div className="font-medium text-gray-800 leading-tight break-words flex-1">
+            {item.name}
+          </div>
+          {onEditName && (
+            <button
+              onClick={() => setIsEditNameModalOpen(true)}
+              className="p-0.5 text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0"
+              aria-label="עריכת שם"
+              title="עריכת שם"
+            >
+              <Edit className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
         
         {/* כפתורי סטטוס */}
@@ -306,6 +322,16 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
           </div>
         </div>
       </Modal>
+
+      {/* Edit Name Modal */}
+      {onEditName && (
+        <EditNameModal
+          isOpen={isEditNameModalOpen}
+          onClose={() => setIsEditNameModalOpen(false)}
+          item={item}
+          onSave={onEditName}
+        />
+      )}
 
       {/* סרגל סטטוס בתחתית הפריט */}
       <div className="absolute bottom-0 left-0 right-0 h-1">
