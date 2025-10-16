@@ -31,7 +31,7 @@ const HEB_CAT: Record<string, string> = {
 export default function Stats() {
   const [user] = useAuthState(auth);
   const { vouchers, loading } = useVouchers();
-  const { openAuthModal, closeAuthModal } = useAuthModal();
+  const { openAuthModal } = useAuthModal();
   const navigate = useNavigate();
 
   React.useEffect(() => {

@@ -98,7 +98,7 @@ function AppContent() {
 }
 
 function App() {
-  const [user, loading] = useAuthState(auth);
+  const [, loading] = useAuthState(auth);
 
   if (loading) {
     return (
