@@ -1,0 +1,12 @@
+# https://www.robotstxt.org/robotstxt.html
+# Carto - Smart Shopping List with Voucher Optimization
+
+User-agent: *
+Allow: /
+
+# Disallow private/auth pages (if any)
+Disallow: /admin
+Disallow: /api
+
+# Sitemap (update with your actual domain when deployed)
+# Sitemap: https://yourdomain.com/sitemap.xml

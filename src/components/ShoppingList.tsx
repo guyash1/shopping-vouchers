@@ -1,0 +1,1245 @@
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { ShoppingCart, Milk, Apple, Beef, Fish, Cake, Candy, Coffee, Droplets, Heart, Package } from "lucide-react";
+import { useLocation } from 'react-router-dom';
+import { auth, db } from '../firebase';
+import { collection, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp, getDoc, onSnapshot, orderBy } from 'firebase/firestore';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import Modal from 'react-modal';
+import Header from './shared/Header';
+import { Item, ShoppingCategory } from '../types/shopping';
+import { HelpModal } from './shopping/HelpModal';
+import { HistoryModal } from './shopping/HistoryModal';
+import { EditQuantityModal } from './shopping/EditQuantityModal';
+import { PartialItemModal } from './shopping/PartialItemModal';
+import { ShoppingItem } from './shopping/ShoppingItem';
+import { AddItemForm } from './shopping/AddItemForm';
+import { shoppingListService, storageService } from '../services/firebase';
+import { aiService } from '../services/ai.service';
+import { useHousehold } from '../contexts/HouseholdContext';
+import { usePageVisibility } from '../utils/usePageVisibility';
+import { useAuthModal } from '../contexts/AuthModalContext';
+
+Modal.setAppElement('#root');
+
+export default function ShoppingList() {
+  const { selectedHousehold } = useHousehold();
+  const [user] = useAuthState(auth);
+  const { openAuthModal } = useAuthModal();
+  const { isActive } = usePageVisibility({ inactivityTimeout: 10, enableInactivityTimeout: true });
+  const location = useLocation();
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isEditQuantityModalOpen, setIsEditQuantityModalOpen] = useState(false);
+  const [isPartialItemModalOpen, setIsPartialItemModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [historyItems, setHistoryItems] = useState<{
+    id: string;
+    name: string; 
+    imageUrl?: string; 
+    purchaseCount: number;
+    lastPurchaseDate?: Date;
+    lastPartialPurchaseDate?: Date;
+  }[]>([]);
+  const [frequentItems, setFrequentItems] = useState<string[]>([]);
+  const [partialItems, setPartialItems] = useState<Item[]>([]);
+  const [isShoppingActive, setIsShoppingActive] = useState(false);
+
+  // פונקציה לקבלת אייקון לקטגוריה
+  const getCategoryIcon = (category?: ShoppingCategory) => {
+    switch (category) {
+      case 'פירות, ירקות ופיצוחים':
+        return <Apple className="w-5 h-5 text-green-500" />;
+      case 'מוצרי חלב וביצים':
+        return <Milk className="w-5 h-5 text-blue-500" />;
+      case 'בשר, עוף ודגים':
+        return <Beef className="w-5 h-5 text-red-500" />;
+      case 'לחמים ומוצרי מאפה':
+        return <Cake className="w-5 h-5 text-amber-500" />;
+      case 'משקאות, יין, אלכוהול וסנקים':
+        return <Coffee className="w-5 h-5 text-purple-600" />;
+      case 'מזון מקורר, קפוא ונקניקים':
+        return <Fish className="w-5 h-5 text-cyan-500" />;
+      case 'בישול אפיה ושימורים':
+        return <Package className="w-5 h-5 text-yellow-600" />;
+      case 'חטיפים מתוקים ודגני בוקר':
+        return <Candy className="w-5 h-5 text-pink-500" />;
+      case 'פארם וטיפוח':
+        return <Heart className="w-5 h-5 text-purple-500" />;
+      case 'עולם התינוקות':
+        return <Heart className="w-5 h-5 text-pink-400" />;
+      case 'ניקיון לבית וחד פעמי':
+        return <Droplets className="w-5 h-5 text-blue-400" />;
+      case 'ויטמינים ותוספי תזונה':
+        return <Heart className="w-5 h-5 text-green-600" />;
+      default:
+        return <Package className="w-5 h-5 text-gray-500" />;
+    }
+  };
+
+  // הסרת הכפילות: onSnapshot למטה מספק גם טעינה ראשונית וגם עדכונים בזמן אמת
+
+  // בדיקה שאנחנו בטאב קניות
+  const isShoppingRoute = location.pathname === '/';
+
+  // מאזין בזמן-אמת לשינויים ברשימת הפריטים עם Page Visibility + Route אופטימיזציה
+  useEffect(() => {
+    if (!isShoppingRoute) {
+      setLoading(false);
+      return;
+    }
+
+    // אם אין משתמש, רק מציג רשימה ריקה
+    if (!user) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
+    if (!isActive) {
+      // אם הטאב לא פעיל - לא מתחיל onSnapshot
+      return;
+    }
+
+
+
+    let q;
+    if (selectedHousehold) {
+      q = query(
+        collection(db, 'items'),
+        where('householdId', '==', selectedHousehold.id),
+        orderBy('createdAt', 'desc')
+      );
+    } else {
+      q = query(
+        collection(db, 'items'),
+        where('addedBy', '==', user.uid),
+        where('householdId', '==', null),
+        orderBy('createdAt', 'desc')
+      );
+    }
+
+    const unsubscribe = onSnapshot(q, snapshot => {
+      const liveItems: Item[] = snapshot.docs.map(d => {
+        const data = d.data();
+        // וידוא סטטוס תקין
+        let status = data.status;
+        if (!status || !['pending', 'inCart', 'missing', 'partial', 'purchased'].includes(status)) {
+          status = 'pending';
+        }
+        return {
+          id: d.id,
+          name: data.name,
+          quantity: data.quantity,
+          status,
+          imageUrl: data.imageUrl || null,
+          purchaseCount: data.purchaseCount || 0,
+          lastPurchaseDate: data.lastPurchaseDate?.toDate(),
+          lastPartialPurchaseDate: data.lastPartialPurchaseDate?.toDate(),
+          householdId: data.householdId,
+          addedBy: data.addedBy,
+          category: data.category
+        } as Item;
+      });
+      setItems(liveItems);
+      setLoading(false);
+    });
+
+    return () => {
+
+      unsubscribe();
+    };
+  }, [user, selectedHousehold, isActive, isShoppingRoute]);
+
+  // הפעלת מצב קניות אוטומטי כאשר יש מוצר בעגלה
+  useEffect(() => {
+    // בודק אם יש לפחות מוצר אחד בעגלה
+    const hasItemInCart = items.some(item => item.status === 'inCart');
+    
+    // אם יש פריט בעגלה, מפעיל את מצב הקניות אוטומטית
+    if (hasItemInCart && !isShoppingActive) {
+      setIsShoppingActive(true);
+    }
+  }, [items, isShoppingActive]);
+
+  // טעינת היסטוריית רכישות
+  const loadHistory = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      let historyQuery;
+      
+      if (selectedHousehold) {
+        // שאילתה לכל הפריטים ששייכים למשק הבית
+        historyQuery = query(
+          collection(db, 'items'),
+          where('householdId', '==', selectedHousehold.id)
+        );
+      } else {
+        // שאילתה לפריטים אישיים של המשתמש
+        historyQuery = query(
+          collection(db, 'items'),
+          where('addedBy', '==', user.uid),
+          where('householdId', '==', null)
+        );
+      }
+      
+      // ביצוע השאילתה
+      const querySnapshot = await getDocs(historyQuery);
+
+      // קיבוץ לפי שם מוצר (case-insensitive) ושמירת ההופעה האחרונה בלבד
+      const grouped = new Map<string, { id: string; name: string; imageUrl?: string; purchaseCount: number; lastPurchaseDate?: Date; lastPartialPurchaseDate?: Date; category?: string }>();
+
+      querySnapshot.forEach((snap) => {
+        const data = snap.data();
+        const rawName: string = (data.name || '').toString();
+        const key = rawName.trim().toLowerCase();
+        if (!key) return;
+
+                  const incoming = {
+          id: snap.id,
+          name: rawName,
+          imageUrl: data.imageUrl || undefined,
+          purchaseCount: data.purchaseCount || 0,
+          lastPurchaseDate: data.lastPurchaseDate?.toDate(),
+          lastPartialPurchaseDate: data.lastPartialPurchaseDate?.toDate(),
+          category: data.category
+        };
+
+        const current = grouped.get(key);
+        if (!current) {
+          grouped.set(key, incoming);
+        } else {
+          const curTime = current.lastPurchaseDate ? current.lastPurchaseDate.getTime() : 0;
+          const incTime = incoming.lastPurchaseDate ? incoming.lastPurchaseDate.getTime() : 0;
+          if (incTime >= curTime) {
+            grouped.set(key, {
+              ...incoming,
+              imageUrl: incoming.imageUrl || current.imageUrl,
+              purchaseCount: Math.max(current.purchaseCount || 0, incoming.purchaseCount || 0),
+              category: incoming.category || current.category
+            });
+          }
+        }
+      });
+
+      const historyData = Array.from(grouped.entries()).map(([_, item]) => ({
+        ...item,
+        id: item.id || '' // Adding id field
+      })).sort(
+        (a, b) => (b.lastPurchaseDate?.getTime() || 0) - (a.lastPurchaseDate?.getTime() || 0)
+      );
+
+      setHistoryItems(historyData);
+      setFrequentItems(historyData.map(h => h.name));
+      
+    } catch (error) {
+      console.error('שגיאה בטעינת היסטוריה:', error);
+    }
+  }, [user, selectedHousehold]);
+
+  // טעינת ההיסטוריה באופן אוטומטי בכל שינוי של משק הבית
+  useEffect(() => {
+    if (user) {
+      loadHistory();
+    }
+  }, [user, selectedHousehold, loadHistory]);
+  
+  // טעינת ההיסטוריה כאשר פותחים את המודל
+  useEffect(() => {
+    if (isHistoryModalOpen && user) {
+  
+      loadHistory();
+    }
+  }, [isHistoryModalOpen, user, loadHistory]);
+
+  // פונקציית עזר לבדיקה והוספת קטגוריה למוצר אם חסרה
+  const ensureItemHasCategory = (item: Item) => {
+    // בדיקה מהירה - אם יש קטגוריה או אם היא כבר 'כללי', לא צריך לעשות כלום
+    if (item.category && item.category !== 'כללי') {
+      return;
+    }
+    
+    // רק אם אין קטגוריה או שהיא 'כללי' - קורא ל-AI ברקע
+    aiService.categorizeItem(item.name)
+      .then(async (category) => {
+        if (category && category !== 'כללי' && category !== item.category) {
+          // עדכון בדאטאבייס
+          await shoppingListService.updateItem(item.id, { category });
+          // עדכון הסטייט המקומי
+          setItems(prev => prev.map(i => 
+            i.id === item.id ? { ...i, category } : i
+          ));
+        }
+      })
+      .catch(error => {
+        console.error('שגיאה בסיווג מוצר ברקע:', error);
+      });
+  };
+
+  // הוספת פריט חדש לרשימת הקניות
+  const handleAddItem = async (
+    itemName: string, 
+    quantity: number, 
+    image?: File,
+    existingImageUrl?: string
+  ) => {
+    if (!itemName.trim()) return;
+    
+    if (!user) {
+      openAuthModal('add-item');
+      return;
+    }
+    
+    try {
+      // חיפוש המוצר בדאטאבייס לפי שם ושייכות למשתמש או למשק בית
+      let itemQuery;
+      
+      if (selectedHousehold) {
+        // נחפש רק מוצרים במשק הבית הנוכחי
+        itemQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName.trim()),
+          where('householdId', '==', selectedHousehold.id)
+        );
+      } else {
+        // נחפש רק מוצרים אישיים של המשתמש
+        itemQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName.trim()),
+          where('addedBy', '==', user.uid),
+          where('householdId', '==', null)
+        );
+      }
+      
+      const querySnapshot = await getDocs(itemQuery);
+
+
+      // אם קיים לפחות מסמך אחד בשם הזה – נשתמש באחד הקיימים (העדפה: האחרון שנרכש)
+      if (!querySnapshot.empty) {
+        // בחירת מסמך "מוביל": לפי lastPurchaseDate או updatedAt/createdAt
+        const pick = querySnapshot.docs
+          .map(d => ({
+            id: d.id,
+            data: d.data(),
+            last: d.data().lastPurchaseDate?.toDate?.() || d.data().updatedAt?.toDate?.() || d.data().createdAt?.toDate?.() || new Date(0)
+          }))
+          .sort((a, b) => b.last.getTime() - a.last.getTime())[0];
+
+        await shoppingListService.updateItem(pick.id, {
+          status: 'pending',
+          quantity
+        });
+
+        // אם הועלתה תמונה חדשה – נעדכן אותה למסמך המוביל
+        if (image) {
+          const imageUrl = await storageService.uploadImage(user.uid, image, 'items');
+          await shoppingListService.updateItem(pick.id, { imageUrl });
+        } else if (existingImageUrl) {
+          await shoppingListService.updateItem(pick.id, { imageUrl: existingImageUrl });
+        }
+
+        // עדכון לוקאלי
+        setItems(prev => {
+          const existsLocal = prev.some(i => i.id === pick.id);
+          const imageUrlToUse = existingImageUrl || (prev.find(i => i.id === pick.id)?.imageUrl ?? null);
+          if (existsLocal) {
+            return prev.map(i => i.id === pick.id ? { ...i, status: 'pending', quantity, imageUrl: imageUrlToUse || i.imageUrl } : i);
+          }
+          return [...prev, {
+            id: pick.id,
+            name: itemName.trim(),
+            quantity,
+            status: 'pending',
+            imageUrl: imageUrlToUse || null,
+            householdId: selectedHousehold ? selectedHousehold.id : null,
+            addedBy: user.uid
+          } as Item];
+        });
+
+        // בדיקה והוספת קטגוריה למוצר קיים שחזר לרשימה (ללא המתנה)
+        const updatedItem = items.find(i => i.id === pick.id) || pick.data;
+        if (updatedItem) {
+          ensureItemHasCategory({ ...updatedItem, id: pick.id, name: itemName.trim() } as Item);
+        }
+      } else {
+        // אין בכלל מסמך – נוסיף חדש
+        let imageUrl = existingImageUrl;
+        if (image) {
+          imageUrl = await storageService.uploadImage(user.uid, image, 'items');
+        }
+        const newItemData = {
+          name: itemName.trim(),
+          quantity,
+          addedBy: user.uid,
+          householdId: selectedHousehold ? selectedHousehold.id : null,
+          imageUrl: imageUrl || null
+        };
+        const itemId = await shoppingListService.addItem(newItemData);
+        
+        // יצירת האובייקט של המוצר החדש עם קטגוריה דפולטית
+        const newItem = { 
+          ...newItemData, 
+          id: itemId, 
+          purchaseCount: 0, 
+          category: 'כללי', // קטגוריה דפולטית להוספה מיידית
+          householdId: selectedHousehold ? selectedHousehold.id : null 
+        } as Item;
+        
+        // הוספה מיידית לסטייט עם קטגוריה דפולטית
+        setItems(prev => [...prev, newItem]);
+        
+        // קטגוריזציה ברקע (ללא המתנה)
+        aiService.categorizeItem(itemName.trim())
+          .then(async (category) => {
+            if (category !== 'כללי') {
+              // עדכון בדאטאבייס
+              await shoppingListService.updateItem(itemId, { category });
+              // עדכון לוקאלי
+              setItems(prev => prev.map(item => 
+                item.id === itemId ? { ...item, category } : item
+              ));
+            }
+          })
+          .catch(error => {
+            console.error('שגיאה בסיווג מוצר ברקע:', error);
+            // המוצר כבר נוסף עם קטגוריה דפולטית, אז לא צריך לעשות כלום
+          });
+  
+      }
+    } catch (error) {
+      console.error('שגיאה בהוספת פריט:', error);
+      alert('שגיאה בהוספת פריט. אנא נסה שוב.');
+    }
+  };
+
+  // מחיקת פריט - עם memoization לביצועים
+  const handleDeleteItem = useCallback(async (id: string) => {
+    if (!user) {
+      openAuthModal('delete');
+      return;
+    }
+
+    try {
+      // מוצא את הפריט ברשימה המקומית
+      const item = items.find(item => item.id === id);
+      if (!item) return;
+
+      const itemRef = doc(db, 'items', id);
+
+      if (item.purchaseCount && item.purchaseCount > 0) {
+        // אם המוצר נקנה בעבר, רק משנים את הסטטוס שלו ל-purchased
+  
+        await updateDoc(itemRef, {
+          status: 'purchased',
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        // אם המוצר לא נקנה אף פעם, מוחקים אותו לגמרי
+        // מוחקים גם את התמונה מ-Storage אם קיימת
+        if (item.imageUrl) {
+          try {
+            await storageService.deleteImage(item.imageUrl);
+          } catch (deleteError) {
+            console.warn('שגיאה במחיקת התמונה:', deleteError);
+            // ממשיכים למחוק את המוצר גם אם נכשלה מחיקת התמונה
+          }
+        }
+  
+        await deleteDoc(itemRef);
+      }
+      
+      // מסיר את הפריט מהרשימה המקומית בכל מקרה
+      setItems(prev => prev.filter(item => item.id !== id));
+
+
+      // מעדכן את ההיסטוריה
+      await loadHistory();
+    } catch (error) {
+      console.error('שגיאה במחיקת פריט:', error);
+    }
+  }, [user, items, loadHistory, openAuthModal]);
+
+  // עדכון סטטוס פריט - עם memoization לביצועים
+  const handleToggleStatus = useCallback(async (id: string, status: Item['status']) => {
+    if (!user) {
+      openAuthModal('edit');
+      return;
+    }
+    
+    try {
+      const itemRef = doc(db, 'items', id);
+      await updateDoc(itemRef, {
+        status,
+        updatedAt: serverTimestamp()
+      });
+      
+        setItems(prev =>
+          prev.map(item =>
+          item.id === id ? { ...item, status } : item
+          )
+        );
+
+
+    } catch (error) {
+      console.error('שגיאה בעדכון סטטוס:', error);
+    }
+  }, [user, openAuthModal]);
+
+  // פתיחת מודל עריכת כמות - עם memoization לביצועים
+  const handleEditQuantity = useCallback((item: Item) => {
+    setSelectedItem(item);
+    setIsEditQuantityModalOpen(true);
+  }, []);
+
+  // עדכון כמות
+  const handleSaveQuantity = async (id: string, newQuantity: number) => {
+    if (!user) {
+      openAuthModal('edit');
+      return;
+    }
+
+    try {
+      const itemRef = doc(db, 'items', id);
+      await updateDoc(itemRef, {
+        quantity: newQuantity,
+        updatedAt: serverTimestamp()
+      });
+      
+      setItems(prev => 
+        prev.map(item => 
+          item.id === id ? { ...item, quantity: newQuantity } : item
+        )
+      );
+      
+      setSelectedItem(null);
+
+    } catch (error) {
+      console.error('שגיאה בעדכון כמות:', error);
+    }
+  };
+
+  // הוספת פריט מההיסטוריה
+  const handleAddFromHistory = async (itemName: string, quantity: number = 1, imageUrl?: string) => {
+    if (!user) return;
+    
+    try {
+      // חיפוש המוצר בדאטאבייס - חשוב: נחפש רק מוצרים ששייכים למשתמש או למשק הבית שלו
+      let householdQuery;
+      
+      if (selectedHousehold) {
+        // חיפוש בתוך מוצרי משק הבית
+        householdQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName),
+          where('householdId', '==', selectedHousehold.id)
+        );
+      } else {
+        // חיפוש רק במוצרים האישיים של המשתמש
+        householdQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName),
+          where('addedBy', '==', user.uid),
+          where('householdId', '==', null)
+        );
+      }
+      
+      const querySnapshot = await getDocs(householdQuery);
+      
+
+
+      
+      if (!querySnapshot.empty) {
+        // מצאנו את המוצר ששייך למשתמש או למשק הבית - נעדכן את הסטטוס שלו ל-PENDING
+        const doc = querySnapshot.docs[0]; // לוקחים את הראשון במקרה שיש כמה
+        const existingItem = doc.data();
+        
+        
+        // עדכון הפריט
+        await shoppingListService.updateItem(doc.id, {
+          status: 'pending',
+          quantity: quantity
+        });
+        
+        // עדכון לוקאלי
+        setItems(prev => {
+          // בודקים אם המוצר כבר קיים ברשימה
+          const itemExists = prev.some(item => item.id === doc.id);
+          
+          if (itemExists) {
+            // אם קיים, מעדכנים את הסטטוס והכמות
+            return prev.map(item =>
+              item.id === doc.id
+                ? { ...item, status: 'pending', quantity }
+                : item
+            );
+          } else {
+            // אם לא קיים, מוסיפים אותו לרשימה
+            return [...prev, {
+              id: doc.id,
+              name: itemName,
+              status: 'pending',
+              quantity: quantity,
+              imageUrl: existingItem.imageUrl || null,
+              purchaseCount: existingItem.purchaseCount || 0,
+              lastPurchaseDate: existingItem.lastPurchaseDate?.toDate(),
+              addedBy: existingItem.addedBy,
+              householdId: existingItem.householdId,
+              category: existingItem.category
+            } as Item];
+          }
+        });
+
+        // בדיקה והוספת קטגוריה למוצר מההיסטוריה (ללא המתנה)
+        const itemToCheck = {
+          id: doc.id,
+          name: itemName,
+          category: existingItem.category
+        } as Item;
+        ensureItemHasCategory(itemToCheck);
+        
+  
+      } else {
+        // המוצר לא נמצא במשק הבית או ברשימה האישית - ניצור פריט חדש
+
+        await handleAddItem(itemName, quantity, undefined, imageUrl);
+      }
+      
+      // טעינה מחדש של ההיסטוריה כדי לעדכן את הרשימה
+      await loadHistory();
+      
+      setIsHistoryModalOpen(false);
+    } catch (error) {
+      console.error('שגיאה בהוספת פריט מההיסטוריה:', error);
+    }
+  };
+
+  // מחיקת פריט מההיסטוריה
+  const handleDeleteFromHistory = async (itemName: string) => {
+    if (!user) return;
+    
+    try {
+      // קבלת כל הפריטים עם השם הזה, בהתאם למשק הבית או למשתמש
+      let historyQuery;
+      
+      if (selectedHousehold) {
+        // חיפוש בפריטים של משק הבית
+        historyQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName),
+          where('householdId', '==', selectedHousehold.id),
+          where('status', '==', 'purchased')
+        );
+      } else {
+        // חיפוש בפריטים אישיים של המשתמש
+        historyQuery = query(
+          collection(db, 'items'),
+          where('name', '==', itemName),
+          where('addedBy', '==', user.uid),
+          where('householdId', '==', null),
+          where('status', '==', 'purchased')
+        );
+      }
+      
+      const querySnapshot = await getDocs(historyQuery);
+      
+      // מחיקת התמונות ועדכון הפריטים
+      for (const doc of querySnapshot.docs) {
+        const data = doc.data();
+        
+        // אם יש תמונה, מחק אותה מה-Storage
+        if (data.imageUrl) {
+          try {
+            await storageService.deleteImage(data.imageUrl);
+      
+          } catch (error) {
+            console.error('שגיאה במחיקת תמונה:', error);
+            // ממשיך למרות שגיאה במחיקת תמונה
+          }
+        }
+        
+        // מחיקת הפריט עצמו
+        await deleteDoc(doc.ref);
+  
+      }
+      
+      // עדכון הסטייט המקומי
+      setHistoryItems(prev => prev.filter(item => item.name !== itemName));
+      setFrequentItems(prev => prev.filter(name => name !== itemName));
+      
+    } catch (error) {
+      console.error('שגיאה במחיקה מההיסטוריה:', error);
+    }
+  };
+
+  // העלאת תמונה
+  const handleUploadImage = async (file: File | null, itemId: string): Promise<string> => {
+    if (!user) throw new Error('המשתמש אינו מחובר');
+    
+    try {
+      // מציאת התמונה הקיימת
+      const existingItem = items.find(item => item.id === itemId);
+      const oldImageUrl = existingItem?.imageUrl;
+
+      if (file === null) {
+        // מחיקת תמונה
+        if (oldImageUrl) {
+          try {
+            await storageService.deleteImage(oldImageUrl);
+      
+          } catch (deleteError) {
+            console.warn('שגיאה במחיקת התמונה:', deleteError);
+            throw deleteError;
+          }
+        }
+        
+        // עדכון המוצר בפיירסטור
+        await shoppingListService.updateItem(itemId, { imageUrl: null });
+        
+        // עדכון הסטייט המקומי
+        setItems(prev =>
+          prev.map(item =>
+            item.id === itemId ? { ...item, imageUrl: null } : item
+          )
+        );
+        
+        return '';
+      } else {
+        // העלאת תמונה חדשה
+        const imageUrl = await storageService.uploadImage(user.uid, file, 'items');
+        await shoppingListService.updateItem(itemId, { imageUrl });
+        
+        // מחיקת התמונה הישנה אם קיימת
+        if (oldImageUrl) {
+          try {
+            await storageService.deleteImage(oldImageUrl);
+      
+          } catch (deleteError) {
+            console.warn('שגיאה במחיקת התמונה הישנה:', deleteError);
+            // ממשיכים למרות שגיאה במחיקת התמונה הישנה
+          }
+        }
+        
+        // עדכון הסטייט המקומי
+        setItems(prev =>
+          prev.map(item =>
+            item.id === itemId ? { ...item, imageUrl } : item
+          )
+        );
+        
+        return imageUrl;
+      }
+    } catch (error) {
+      console.error('שגיאה בהעלאת/מחיקת תמונה:', error);
+      throw error;
+    }
+  };
+
+  // חישוב סטטיסטיקות קניות - עם memoization לביצועים
+  const stats = useMemo(() => {
+
+    
+    // פריטים פעילים הם אלה שלא במצב purchased
+    const activeItems = items.filter(item => item.status !== 'purchased');
+    const totalItems = activeItems.length;
+    
+    const itemsInCart = activeItems.filter(item => item.status === 'inCart').length;
+    const itemsMissing = activeItems.filter(item => item.status === 'missing').length;
+    const itemsPartial = activeItems.filter(item => item.status === 'partial').length;
+    const itemsPending = activeItems.filter(item => item.status === 'pending').length;
+    
+    // כמות פריטים שנקנו - נשמור לסטטיסטיקות אבל לא נציג ברשימה הפעילה
+    const itemsPurchased = items.filter(item => item.status === 'purchased').length;
+    
+    return {
+      totalItems,
+      itemsInCart,
+      itemsMissing,
+      itemsPartial,
+      itemsPending,
+      itemsPurchased,
+      progress: totalItems > 0 ? ((itemsInCart + itemsMissing + itemsPartial) / totalItems) * 100 : 0
+    };
+  }, [items]);
+
+  // חישוב נתונים לגרף פס - עם memoization לביצועים
+  const barChartData = useMemo(() => {
+    const segments = [
+      { 
+        value: stats.itemsInCart, 
+        color: '#10B981', // ירוק
+        label: 'בעגלה',
+        percentage: stats.totalItems > 0 ? (stats.itemsInCart / stats.totalItems) * 100 : 0 
+      },
+      { 
+        value: stats.itemsPartial, 
+        color: '#F59E0B', // צהוב
+        label: 'חלקי',
+        percentage: stats.totalItems > 0 ? (stats.itemsPartial / stats.totalItems) * 100 : 0 
+      },
+      { 
+        value: stats.itemsMissing, 
+        color: '#EF4444', // אדום
+        label: 'חסר',
+        percentage: stats.totalItems > 0 ? (stats.itemsMissing / stats.totalItems) * 100 : 0 
+      },
+      { 
+        value: stats.itemsPending, 
+        color: '#6B7280', // אפור
+        label: 'בהמתנה',
+        percentage: stats.totalItems > 0 ? (stats.itemsPending / stats.totalItems) * 100 : 0 
+      }
+    ];
+
+    // מחזיר רק את מקטעי הגרף שיש בהם ערך
+    return segments.filter(segment => segment.value > 0);
+  }, [stats]);
+
+  // מיון פריטים לפי סטטוס - עם memoization לביצועים
+  const sortedItems = useMemo(() => {
+    return [...items].filter(item => item.status !== 'purchased').sort((a, b) => {
+    if (isShoppingActive) {
+      // כאשר הקניות פעילות, סדר שונה - פריטים בהמתנה מוצגים ראשונים
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+    } else {
+      // סדר רגיל - מיון לפי סטטוס
+      // פריטים בהמתנה בהתחלה
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+      
+      // אחר כך פריטים חלקיים
+      if (a.status === 'partial' && b.status !== 'partial') return -1;
+      if (a.status !== 'partial' && b.status === 'partial') return 1;
+      
+      // אחר כך פריטים חסרים
+      if (a.status === 'missing' && b.status !== 'missing') return -1;
+      if (a.status !== 'missing' && b.status === 'missing') return 1;
+      
+      // אחר כך פריטים בעגלה
+      if (a.status === 'inCart' && b.status !== 'inCart') return -1;
+      if (a.status !== 'inCart' && b.status === 'inCart') return 1;
+    }
+    
+    return 0;
+  });
+  }, [items, isShoppingActive]);
+  
+  // התצוגה הראשית מציגה רק פריטים שלא purchased
+  const displayItems = sortedItems;
+
+  // קיבוץ פריטים לפי קטגוריות
+  const groupedItems = useMemo(() => {
+    const groups: Record<string, Item[]> = {};
+    
+    displayItems.forEach(item => {
+      const category = item.category || 'כללי';
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(item);
+    });
+
+    // סדר קטגוריות מועדף
+    const categoryOrder = [
+      'פירות, ירקות ופיצוחים',
+      'מוצרי חלב וביצים',
+      'בשר, עוף ודגים',
+      'לחמים ומוצרי מאפה',
+      'משקאות, יין, אלכוהול וסנקים',
+      'מזון מקורר, קפוא ונקניקים',
+      'בישול אפיה ושימורים',
+      'חטיפים מתוקים ודגני בוקר',
+      'פארם וטיפוח',
+      'עולם התינוקות',
+      'ניקיון לבית וחד פעמי',
+      'ויטמינים ותוספי תזונה',
+      'כללי'
+    ];
+
+    const sortedGroups: Array<{ category: ShoppingCategory | 'כללי'; items: Item[] }> = [];
+    
+    // מוסיף קטגוריות לפי הסדר המועדף
+    categoryOrder.forEach(category => {
+      if (groups[category] && groups[category].length > 0) {
+        sortedGroups.push({ 
+          category: category as ShoppingCategory, 
+          items: groups[category] 
+        });
+      }
+    });
+    
+    // מוסיף קטגוריות אחרות שלא במסדר המועדף
+    Object.keys(groups).forEach(category => {
+      if (!categoryOrder.includes(category) && groups[category].length > 0) {
+        sortedGroups.push({ 
+          category: category as ShoppingCategory, 
+          items: groups[category] 
+        });
+      }
+    });
+    
+    return sortedGroups;
+  }, [displayItems]);
+
+  // כאשר לוחצים על כפתור סיום קניות, מבטלים את מצב הקניות
+  const handleFinishShopping = async () => {
+    // השארת הלוגיקה הקיימת
+    try {
+      setLoading(true);
+      
+      // מחלקים את הפריטים לפי סטטוס
+      const itemsInCart = items.filter(item => item.status === 'inCart');
+      const missingItems = items.filter(item => item.status === 'missing');
+      const partialItems = items.filter(item => item.status === 'partial');
+      
+      // מטפלים בפריטים שנמצאים בעגלה - מעבירים אותם לסטטוס purchased
+      if (itemsInCart.length > 0) {
+        await handleProcessInCartItems(itemsInCart);
+      }
+      
+      // מטפלים בפריטים חסרים - מחזירים אותם למצב pending אם יש
+      if (missingItems.length > 0) {
+        await handleResetMissingItems(missingItems);
+      }
+      
+      // אם יש פריטים חלקיים, פותחים מודל לעדכון כמויות
+      if (partialItems.length > 0) {
+        setPartialItems(partialItems);
+        setIsPartialItemModalOpen(true);
+      }
+      
+  
+      
+      // מבטלים מצב קניות פעיל
+      setIsShoppingActive(false);
+    } catch (error) {
+      console.error('שגיאה בסיום קניות:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // פונקציה חדשה להפעלת/ביטול מצב הקניות
+  const toggleShoppingMode = () => {
+    setIsShoppingActive(!isShoppingActive);
+  };
+
+  // טיפול בפריטים שנקנו במלואם
+  const handleProcessInCartItems = async (itemsInCart: Item[]) => {
+    try {
+  
+      
+      for (const item of itemsInCart) {
+        try {
+          const itemRef = doc(db, 'items', item.id);
+          
+          // הזהירות: לא נשנה את householdId אם כבר יש לפריט
+          const itemDoc = await getDoc(itemRef);
+          const existingHouseholdId = itemDoc.exists() ? itemDoc.data().householdId : null;
+          const finalHouseholdId = existingHouseholdId !== undefined ? existingHouseholdId : (selectedHousehold ? selectedHousehold.id : undefined);
+          
+          // עדכון סטטוס, הגדלת מונה ושמירת תאריך רכישה אחרון
+          await updateDoc(itemRef, {
+            status: 'purchased',
+            purchaseCount: (item.purchaseCount || 0) + 1,
+            lastPurchaseDate: Timestamp.now(),
+            updatedAt: serverTimestamp(),
+            householdId: finalHouseholdId
+          });
+          
+    
+        } catch (error) {
+          console.error(`שגיאה בטיפול בפריט ${item.name}:`, error);
+        }
+      }
+      
+      // עדכון ברשימה המקומית - לשנות את כל הפריטים שהיו ב-inCart ל-purchased
+      setItems(prev =>
+        prev.map(item =>
+        item.status === 'inCart' ? { 
+          ...item, 
+          status: 'purchased', 
+          purchaseCount: (item.purchaseCount || 0) + 1,
+          lastPurchaseDate: new Date(),
+          // שמירת householdId הקיים של הפריט אם יש כזה
+          householdId: item.householdId !== undefined ? item.householdId : (selectedHousehold ? selectedHousehold.id : undefined)
+        } : item
+      )
+    );
+      
+      // טעינה מחדש של ההיסטוריה באופן מפורש ומיידי
+  
+      await loadHistory();
+      
+      // טעינה חוזרת של היסטוריה בהדרגה - לפעמים פיירבייס לא מחזיר את הנתונים המעודכנים מיד
+      const delayTimes = [100, 500, 1000, 3000];
+      
+      for (const delay of delayTimes) {
+        setTimeout(async () => {
+    
+          await loadHistory();
+        }, delay);
+      }
+      
+      // onSnapshot יטפל באופן אוטומטי בעדכון הנתונים
+      
+    } catch (error) {
+      console.error('שגיאה בעיבוד פריטים שנרכשו:', error);
+    }
+  };
+
+  // איפוס פריטים חסרים
+  const handleResetMissingItems = async (missingItems: Item[]) => {
+    for (const item of missingItems) {
+      try {
+        await shoppingListService.updateItemStatus(item.id, 'pending');
+      } catch (error) {
+        console.error(`שגיאה באיפוס פריט ${item.name}:`, error);
+      }
+    }
+    
+    // עדכון הרשימה המקומית
+      setItems(prev =>
+      prev.map(item => 
+        item.status === 'missing' ? { ...item, status: 'pending' } : item
+      )
+    );
+  };
+
+  // שמירת פריטים חלקיים
+  const handleSavePartialItems = async (updates: { id: string; newQuantity: number }[]) => {
+    for (const update of updates) {
+      const item = items.find(i => i.id === update.id);
+      if (!item) continue;
+      
+      try {
+        // עדכון הכמות
+        await shoppingListService.updateItem(update.id, { quantity: update.newQuantity });
+        
+        // רישום רכישה חלקית
+        await shoppingListService.recordPurchase(update.id, true);
+        
+        // עדכון הסטטוס ל-pending
+        await shoppingListService.updateItemStatus(update.id, 'pending');
+      } catch (error) {
+        console.error(`שגיאה בעדכון פריט חלקי ${update.id}:`, error);
+      }
+    }
+    
+    // סגירת המודל
+    setIsPartialItemModalOpen(false);
+    
+    // עדכון הסטייט המקומי לפני טעינה מחדש
+    setItems(prev => 
+      prev.map(item => 
+        updates.some(update => update.id === item.id)
+          ? { ...item, status: 'pending', quantity: updates.find(u => u.id === item.id)?.newQuantity || item.quantity }
+          : item
+      )
+    );
+    
+    // onSnapshot יטפל באופן אוטומטי בעדכון הנתונים
+    await loadHistory();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-l-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Header 
+        showHelp={true} 
+        onHelpClick={() => setIsHelpModalOpen(true)}
+      />
+      
+      <div className="max-w-md mx-auto p-4 pb-24">
+
+      <AddItemForm 
+        onAddItem={handleAddItem}
+        onOpenHistoryModal={() => setIsHistoryModalOpen(true)}
+        historyItems={historyItems}
+        activeItems={items.filter(item => item.status === 'pending' || item.status === 'missing')}
+      />
+
+      {/* Shopping mode toggle */}
+      {displayItems.length > 0 && !items.some(item => item.status === 'inCart') && (
+        <div className="mb-4">
+          <button
+            onClick={toggleShoppingMode}
+            className={`w-full py-2 px-4 rounded-md text-white font-medium shadow transition-colors ${
+              isShoppingActive ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-blue-500 hover:bg-blue-600'
+            }`}
+          >
+            {isShoppingActive ? 'סגור מצב קניות' : 'התחל קניות'}
+          </button>
+        </div>
+      )}
+
+      {/* Shopping progress statistics */}
+      {isShoppingActive && displayItems.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-4 mb-4">
+          <div className="flex justify-between mb-2">
+            <span className="text-sm text-gray-600">התקדמות קניות:</span>
+            <span className="text-sm font-medium">{Math.round(stats.progress)}%</span>
+          </div>
+
+          {stats.totalItems > 0 && (
+            <div className="mb-4">
+              <div className="h-3 w-full bg-gray-200 rounded-md overflow-hidden flex">
+                {barChartData.map((segment, index) => (
+                  <div 
+                    key={index} 
+                    className="h-full" 
+                    style={{ 
+                      width: `${segment.percentage}%`, 
+                      backgroundColor: segment.color 
+                    }}
+                    title={`${segment.label}: ${segment.value}`}
+                  ></div>
+                ))}
+              </div>
+              
+              <div className="flex flex-wrap justify-between text-xs text-gray-500 mt-2">
+                {barChartData.map((segment, index) => (
+                  <div key={index} className="flex items-center gap-1 mt-1">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: segment.color }}></div>
+                    <span>
+                      {segment.label}: {segment.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* מידע מספרי */}
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold text-gray-800">{stats.itemsPending}</span>
+              <span className="text-xs text-gray-500">בהמתנה</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold text-green-600">{stats.itemsInCart}</span>
+              <span className="text-xs text-gray-500">בעגלה</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold text-yellow-500">{stats.itemsPartial}</span>
+              <span className="text-xs text-gray-500">חלקי</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold text-red-500">{stats.itemsMissing}</span>
+              <span className="text-xs text-gray-500">חסר</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* רשימת הפריטים */}
+      {loading ? (
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-l-blue-600 mb-2"></div>
+          <p className="text-gray-600">טוען פריטים...</p>
+        </div>
+      ) : displayItems.length > 0 ? (
+        <div className="space-y-6">
+          {groupedItems.map(group => (
+            <div key={group.category} className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {getCategoryIcon(group.category as ShoppingCategory)}
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      {group.category}
+                    </h3>
+                  </div>
+                  <span className="bg-white px-2 py-1 rounded-full text-sm font-medium text-gray-600 shadow-sm">
+                    {group.items.length} פריטים
+                  </span>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {group.items.map(item => (
+                  <div key={item.id} className="p-3">
+                    <ShoppingItem
+                      item={item}
+                      onDelete={handleDeleteItem}
+                      onEditQuantity={handleEditQuantity}
+                      onToggleStatus={handleToggleStatus}
+                      onUploadImage={handleUploadImage}
+                      onChangeQuantity={async (id: string, newQuantity: number) => {
+                        await handleSaveQuantity(id, newQuantity);
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Finish shopping button */}
+          {items.some(item => item.status === 'inCart') && (
+            <div className="mt-6">
+              <button
+                onClick={handleFinishShopping}
+                className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 font-semibold"
+              >
+                סיום קניות
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <div className="flex justify-center mb-4">
+            <ShoppingCart className="w-12 h-12 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">הרשימה ריקה</h3>
+          <p className="text-gray-500">
+            הוספת פריטים לרשימת הקניות
+          </p>
+        </div>
+      )}
+
+      <HelpModal 
+        isOpen={isHelpModalOpen} 
+        onClose={() => setIsHelpModalOpen(false)} 
+      />
+
+        <HistoryModal
+          isOpen={isHistoryModalOpen}
+          onClose={() => setIsHistoryModalOpen(false)}
+          frequentItems={frequentItems}
+          onItemSelect={handleAddFromHistory}
+          historyItemsData={historyItems}
+          onDeleteFromHistory={handleDeleteFromHistory}
+          handleUploadImage={handleUploadImage}
+          onHistoryUpdate={setHistoryItems}
+          currentItems={items.filter(item => item.status !== 'purchased').map(item => item.name)}
+        />
+
+      {selectedItem && (
+          <EditQuantityModal
+          isOpen={isEditQuantityModalOpen}
+          onClose={() => setIsEditQuantityModalOpen(false)}
+          item={selectedItem}
+          onSave={handleSaveQuantity}
+        />
+      )}
+
+        <PartialItemModal
+        isOpen={isPartialItemModalOpen}
+        onClose={() => setIsPartialItemModalOpen(false)}
+          items={partialItems}
+        onSave={handleSavePartialItems}
+        />
+      </div>
+    </>
+  );
+}
