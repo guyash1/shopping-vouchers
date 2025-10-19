@@ -175,55 +175,46 @@ export function HistoryModal({
           </button>
         </div>
 
-        {/* חיפוש וסינון */}
+        {/* חיפוש וסינון - responsive design */}
         <div className="p-3 border-b">
-          <div className="flex gap-3 flex-wrap">
-            {/* חיפוש */}
-            <div className="flex-1 min-w-0">
-              <div className="relative">
-                <input
-                  type="search"
-                  placeholder="חיפוש..."
-                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base placeholder:text-gray-500"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* סינון */}
-            <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+          {/* מובייל: שתי שורות, דסקטופ: שורה אחת */}
+          <div className="flex flex-col md:flex-row gap-3 md:items-center">
+            {/* כפתורי סינון */}
+            <div className="flex gap-2 md:gap-2 flex-shrink-0">
               <button
                 onClick={() => setSortBy('date')}
-                className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap min-w-0 ${
+                className={`flex items-center gap-1.5 md:gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex-1 md:flex-none justify-center whitespace-nowrap ${
                   sortBy === 'date' 
                     ? 'bg-blue-100 text-blue-700' 
                     : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                 }`}
-                title="מיון לפי תאריך"
               >
-                <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-                  <Clock className="w-4 h-4 flex-shrink-0" />
-                  <span className="hidden sm:inline truncate">לפי תאריך</span>
-                  <span className="sm:hidden truncate">תאריך</span>
-                </div>
+                <Clock className="w-4 h-4 flex-shrink-0" />
+                <span>תאריך</span>
               </button>
               <button
                 onClick={() => setSortBy('popularity')}
-                className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap min-w-0 ${
+                className={`flex items-center gap-1.5 md:gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex-1 md:flex-none justify-center whitespace-nowrap ${
                   sortBy === 'popularity' 
                     ? 'bg-blue-100 text-blue-700' 
                     : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                 }`}
-                title="מיון לפי פופולאריות"
               >
-                <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-                  <ShoppingCart className="w-4 h-4 flex-shrink-0" />
-                  <span className="hidden sm:inline truncate">פופולאריות</span>
-                  <span className="sm:hidden truncate">פופ</span>
-                </div>
+                <ShoppingCart className="w-4 h-4 flex-shrink-0" />
+                <span>פופולאריות</span>
               </button>
+            </div>
+
+            {/* שדה חיפוש */}
+            <div className="relative flex-1 min-w-0">
+              <input
+                type="search"
+                placeholder="חפש פריט..."
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm placeholder:text-gray-500"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
           </div>
 
