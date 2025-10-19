@@ -162,19 +162,19 @@ export function HouseholdSwitcherModal({ isOpen, onClose, onSuccess }: Props) {
             aria-label="סגור"
           >
             <X className="w-6 h-6" />
-          </button>
+        </button>
         </div>
 
         <div className="p-6">
-          {managerMode === 'none' && (
-            <>
+        {managerMode === 'none' && (
+          <>
               <p className="text-sm text-gray-600 mb-4 text-center">
                 בחרו משק בית פעיל או הוסיפו חדש
               </p>
 
-              {/* רשימת משקי בית */}
+            {/* רשימת משקי בית */}
               <div className="space-y-3 mb-6">
-                {households.map(hh => (
+              {households.map(hh => (
                   <button
                     key={hh.id}
                     onClick={() => handleSelect(hh.id)}
@@ -209,17 +209,17 @@ export function HouseholdSwitcherModal({ isOpen, onClose, onSuccess }: Props) {
                       <ChevronRight className="w-5 h-5 text-gray-400" />
                     )}
                   </button>
-                ))}
-                {households.length === 0 && (
+              ))}
+              {households.length === 0 && (
                   <div className="text-center py-8 text-gray-500">
                     <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                     <p className="text-sm">אין עדיין משקי בית</p>
                   </div>
-                )}
+              )}
               </div>
 
               {/* פרטי משק בית נבחר */}
-              {selectedHousehold && (
+            {selectedHousehold && (
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5 mb-6 border border-gray-200">
                   {/* שם משק בית עם אפשרות עריכה */}
                   <div className="mb-4">
@@ -350,57 +350,57 @@ export function HouseholdSwitcherModal({ isOpen, onClose, onSuccess }: Props) {
                                   title="הסר חבר"
                                 >
                                   <Trash2 className="w-4 h-4 text-red-500 hover:text-red-700" />
-                                </button>
+                   </button>
                               )}
-                            </div>
-                          </li>
+                </div>
+                    </li>
                         );
                       })}
-                    </ul>
+                </ul>
                   </div>
 
                   {/* כפתור עזיבה */}
-                  {auth.currentUser?.uid !== selectedHousehold.ownerId && (
-                    <button
-                      onClick={handleLeave}
+                {auth.currentUser?.uid !== selectedHousehold.ownerId && (
+                  <button
+                    onClick={handleLeave}
                       className="w-full mt-4 bg-red-100 text-red-600 py-2 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
                     >
                       עזוב משק בית
                     </button>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
+            )}
 
               {/* כפתורי פעולה */}
               <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => setManagerMode('create')}
+              <button
+                onClick={() => setManagerMode('create')}
                   className="w-full flex justify-center items-center gap-2 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-500/30 font-semibold"
-                >
+              >
                   <PlusSquare className="w-5 h-5" />
                   הוספת משק בית חדש
-                </button>
-                <button
-                  onClick={() => setManagerMode('join')}
+              </button>
+              <button
+                onClick={() => setManagerMode('join')}
                   className="w-full flex justify-center items-center gap-2 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
-                >
+              >
                   <Users className="w-5 h-5" />
-                  הצטרף למשק בית קיים
-                </button>
-              </div>
-            </>
-          )}
+                הצטרף למשק בית קיים
+              </button>
+            </div>
+          </>
+        )}
 
           {/* תצוגת מנהל משקים */}
-          {managerMode !== 'none' && (
-            <HouseholdManager 
-              onClose={() => setManagerMode('none')} 
-              onSuccess={handleManagerSuccess} 
-              initialMode={managerMode}
-            />
-          )}
+        {managerMode !== 'none' && (
+          <HouseholdManager 
+            onClose={() => setManagerMode('none')} 
+            onSuccess={handleManagerSuccess} 
+            initialMode={managerMode}
+          />
+        )}
         </div>
       </div>
     </div>
   );
-}
+} 
