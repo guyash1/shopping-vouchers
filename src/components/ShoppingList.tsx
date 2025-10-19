@@ -33,21 +33,29 @@ export default function ShoppingList() {
   const [loading, setLoading] = useState(true);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   
-  // Show onboarding for first-time users
+  // Show onboarding for first-time users ONLY (prevent double showing)
+  const [hasTriggeredOnboarding, setHasTriggeredOnboarding] = useState(false);
+  
   useEffect(() => {
-    if (shouldShowOnboarding && !isHelpModalOpen) {
+    // Only show for new users who haven't seen it before AND are logged in
+    if (shouldShowOnboarding && user && !isHelpModalOpen && !hasTriggeredOnboarding) {
       setIsHelpModalOpen(true);
+      setHasTriggeredOnboarding(true);
+      markOnboardingAsSeen(); // Mark as seen immediately to prevent double showing
     }
-  }, [shouldShowOnboarding, isHelpModalOpen]);
+  }, [shouldShowOnboarding, user, isHelpModalOpen, hasTriggeredOnboarding, markOnboardingAsSeen]);
 
   // Listen for manual help modal trigger (e.g. after household creation)
   useEffect(() => {
     const handler = () => {
-      setIsHelpModalOpen(true);
+      // Only show if user is logged in and it's after household creation
+      if (user) {
+        setIsHelpModalOpen(true);
+      }
     };
     window.addEventListener('openHelpModal', handler);
     return () => window.removeEventListener('openHelpModal', handler);
-  }, []);
+  }, [user]);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isEditQuantityModalOpen, setIsEditQuantityModalOpen] = useState(false);
   const [isPartialItemModalOpen, setIsPartialItemModalOpen] = useState(false);
@@ -488,7 +496,7 @@ export default function ShoppingList() {
     }
   }, [user, items, loadHistory, openAuthModal]);
 
-  // עדכון סטטוס פריט - עם memoization לביצועים
+  // עדכון סטטוס פריט - עם memoization לביצועים + אוטומטי מצב קניות
   const handleToggleStatus = useCallback(async (id: string, status: Item['status']) => {
     if (!user) {
       openAuthModal('edit');
@@ -502,12 +510,16 @@ export default function ShoppingList() {
         updatedAt: serverTimestamp()
       });
       
-        setItems(prev =>
-          prev.map(item =>
+      setItems(prev =>
+        prev.map(item =>
           item.id === id ? { ...item, status } : item
-          )
-        );
+        )
+      );
 
+      // הפעלת מצב קניות אוטומטית כשמשנים סטטוס למוצרים
+      if (status === 'inCart' || status === 'missing' || status === 'partial') {
+        setIsShoppingActive(true);
+      }
 
     } catch (error) {
       console.error('שגיאה בעדכון סטטוס:', error);
@@ -968,6 +980,19 @@ export default function ShoppingList() {
     setIsShoppingActive(!isShoppingActive);
   };
 
+  // סגירה אוטומטית של מצב קניות אם אין פריטים בסימון (רק כשמשתנים הפריטים, לא כשלוחצים על הכפתור)
+  useEffect(() => {
+    if (isShoppingActive && items.length > 0) {
+      const hasActiveItems = items.some(item => 
+        item.status === 'inCart' || item.status === 'missing' || item.status === 'partial'
+      );
+      
+      if (!hasActiveItems) {
+        setIsShoppingActive(false);
+      }
+    }
+  }, [items]); // הסרנו את isShoppingActive מה-dependencies
+
   // פונקציה לעריכת שם המוצר
   const handleEditName = async (id: string, newName: string) => {
     if (!user) {
@@ -1142,15 +1167,32 @@ export default function ShoppingList() {
       />
 
       {/* Shopping mode toggle */}
-      {displayItems.length > 0 && !items.some(item => item.status === 'inCart') && (
+      {displayItems.length > 0 && (
         <div className="mb-4">
           <button
-            onClick={toggleShoppingMode}
+            onClick={() => {
+              // אם יש פריטים מסומנים במצב קניות, סיום קניות
+              if (isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')) {
+                handleFinishShopping();
+              } else {
+                // אחרת, הפעל/בטל מצב קניות
+                toggleShoppingMode();
+              }
+            }}
             className={`w-full py-2 px-4 rounded-md text-white font-medium shadow transition-colors ${
-              isShoppingActive ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-blue-500 hover:bg-blue-600'
+              isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing') 
+                ? 'bg-green-600 hover:bg-green-700' 
+                : isShoppingActive 
+                  ? 'bg-yellow-500 hover:bg-yellow-600' 
+                  : 'bg-blue-500 hover:bg-blue-600'
             }`}
           >
-            {isShoppingActive ? 'סגור מצב קניות' : 'התחל קניות'}
+            {isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')
+              ? 'סיום קניות'
+              : isShoppingActive 
+                ? 'סגור מצב קניות' 
+                : 'התחל קניות'
+            }
           </button>
         </div>
       )}
@@ -1258,7 +1300,7 @@ export default function ShoppingList() {
           ))}
 
           {/* Finish shopping button */}
-          {items.some(item => item.status === 'inCart') && (
+          {items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing') && (
             <div className="mt-6">
               <button
                 onClick={handleFinishShopping}

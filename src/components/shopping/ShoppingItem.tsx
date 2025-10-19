@@ -45,6 +45,12 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
   };
 
   const handleStatusToggle = (status: Item['status']) => {
+    // בדיקה מיוחדת לסטטוס "חלקי" עם כמות 1
+    if (status === 'partial' && item.quantity === 1) {
+      alert('לא ניתן לסמן מוצר כחלקי כאשר הכמות היא 1!\n\n סמנו אותו "בעגלה" או "חסר".');
+      return;
+    }
+    
     // אם כבר לחוץ על הסטטוס, מחזירים למצב רגיל, אחרת מעדכנים לסטטוס החדש
     const newStatus = item.status === status ? 'pending' : status;
     onToggleStatus(item.id, newStatus);
