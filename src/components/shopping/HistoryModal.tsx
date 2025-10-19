@@ -208,9 +208,9 @@ export function HistoryModal({
             {/* שדה חיפוש */}
             <div className="relative flex-1 min-w-0 overflow-hidden">
               <input
-                type="search"
+                type="text"
                 placeholder="חפש פריט..."
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12"
+                className="w-full pl-3 pr-10 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 dir="rtl"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

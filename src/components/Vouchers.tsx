@@ -504,17 +504,18 @@ export default function Vouchers() {
                                 placeholder="חפש לפי שם חנות..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full py-2 px-4 pr-10 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full pr-3 pl-10 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                dir="rtl"
                             />
                             {searchTerm ? (
                                 <button 
                                     onClick={() => setSearchTerm('')}
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
                             ) : (
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                             )}
                         </div>
                         <button

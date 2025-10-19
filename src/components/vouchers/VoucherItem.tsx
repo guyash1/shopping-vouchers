@@ -513,7 +513,8 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
               type="date"
               value={newExpiryDate}
               onChange={(e) => setNewExpiryDate(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              dir="rtl"
             />
             <div className="flex justify-end gap-2 mt-1">
               <button
@@ -555,8 +556,9 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
                 step="0.01"
                 value={usedAmountInput}
                 onChange={(e) => setUsedAmountInput(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 placeholder="סכום לשימוש כעת"
+                dir="rtl"
               />
             </div>
             <div className="text-xs text-gray-500 mb-2">
@@ -603,8 +605,9 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
                 step="0.01"
                 value={editRemainingInput}
                 onChange={(e) => setEditRemainingInput(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 placeholder="יתרה חדשה"
+                dir="rtl"
               />
             </div>
             <div className="text-xs text-gray-500 mb-2">
