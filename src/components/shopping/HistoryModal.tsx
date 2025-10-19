@@ -206,11 +206,18 @@ export function HistoryModal({
             </div>
 
             {/* שדה חיפוש */}
-            <div className="relative flex-1 min-w-0">
+            <div className="relative flex-1 min-w-0 overflow-hidden">
               <input
                 type="search"
                 placeholder="חפש פריט..."
-                className="w-full pl-3 pr-12 text-right bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm placeholder:text-gray-500 py-2.5"
+                className="w-full pl-3 pr-12 text-right bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm placeholder:text-gray-500 py-2.5 max-w-full"
+                style={{
+                  transform: 'none',
+                  zoom: 1,
+                  fontSize: '14px',
+                  maxWidth: '100%',
+                  boxSizing: 'border-box'
+                }}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
