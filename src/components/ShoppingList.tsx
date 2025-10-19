@@ -991,7 +991,7 @@ export default function ShoppingList() {
         setIsShoppingActive(false);
       }
     }
-  }, [items]); // הסרנו את isShoppingActive מה-dependencies
+  }, [items, isShoppingActive]);
 
   // פונקציה לעריכת שם המוצר
   const handleEditName = async (id: string, newName: string) => {
