@@ -6,7 +6,7 @@ import {
     Plus, Users, X, Search, 
     ShoppingCart, Utensils, Droplet, ShoppingBag, 
     Gift, Filter, ChevronDown,
-    List, CheckCircle, Trash2, RotateCcw
+    List
 } from 'lucide-react';
 import { Voucher } from '../types/vouchers';
 import { VoucherItem } from './vouchers/VoucherItem';
