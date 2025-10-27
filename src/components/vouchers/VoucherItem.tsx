@@ -457,6 +457,14 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
               {getCategoryIcon()}
               <span className="ml-1">{getCategoryName()}</span>
             </div>
+
+            {/* תאריך הוספה - חדש! 📅 */}
+            {voucher.createdAt && (
+              <div className="flex items-center text-xs text-gray-500 px-2 py-1 bg-gray-50 rounded-full">
+                <Calendar className="w-3 h-3 ml-1" />
+                <span>נוסף: {formatDate(voucher.createdAt.toString())}</span>
+              </div>
+            )}
           </div>
         </div>
 
