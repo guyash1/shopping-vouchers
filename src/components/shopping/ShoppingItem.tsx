@@ -3,6 +3,8 @@ import { ShoppingCart, AlertCircle, MinusCircle, PlusCircle, X, Edit, Camera, Tr
 import { Item } from '../../types/shopping';
 import Modal from 'react-modal';
 import { EditNameModal } from './EditNameModal';
+import { getUserColor, getUserName, getInitials } from '../../utils/userColors';
+import { Household } from '../../types/household';
 
 interface ShoppingItemProps {
   item: Item;
@@ -12,6 +14,7 @@ interface ShoppingItemProps {
   onUploadImage: (file: File | null, itemId: string) => Promise<string>;
   onChangeQuantity: (id: string, newQuantity: number) => Promise<void>;
   onEditName?: (id: string, newName: string) => Promise<void>;
+  household: Household | null;
 }
 
 export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({ 
@@ -21,8 +24,13 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
   onToggleStatus,
   onUploadImage,
   onChangeQuantity,
-  onEditName
+  onEditName,
+  household
 }) => {
+  // קבלת פרטי המשתמש שהוסיף
+  const userColor = getUserColor(item.addedBy);
+  const userName = getUserName(item.addedBy, household);
+  const userInitials = getInitials(userName);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUpdatingQty, setIsUpdatingQty] = useState(false);
@@ -71,7 +79,7 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
   };
 
   return (
-    <div className={`grid grid-cols-[56px_1fr_auto_auto] gap-3 p-3 rounded-lg shadow ${getItemBackgroundColor(item.status)} relative border-b border-gray-100 items-start`}>
+    <div className={`grid grid-cols-[56px_1fr_auto_auto] gap-3 p-3 rounded-lg shadow ${getItemBackgroundColor(item.status)} relative border-b border-gray-100 items-start border-r-4 ${userColor.border}`}>
       {/* תמונת המוצר - עמודה קבועה */}
       <div className="w-14 h-14">
         {item.imageUrl ? (
@@ -85,16 +93,20 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
           </div>
         ) : (
           <div className="w-14 h-14 flex items-center justify-center border rounded border-gray-200 bg-gray-50">
-            <label className="flex items-center justify-center cursor-pointer w-full h-full">
-              <input 
-                type="file" 
-                accept="image/*"
-                className="hidden" 
-                onChange={handleImageUpload}
-                disabled={isUploading}
-              />
-              <Camera className={`${isUploading ? 'text-gray-400 animate-pulse' : 'text-gray-400'}`} size={20} />
-            </label>
+            {isUploading ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+            ) : (
+              <label className="flex items-center justify-center cursor-pointer w-full h-full">
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  className="hidden" 
+                  onChange={handleImageUpload}
+                  disabled={isUploading}
+                />
+                <Camera className="text-gray-400" size={20} />
+              </label>
+            )}
           </div>
         )}
       </div>
@@ -102,7 +114,7 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
       {/* תוכן המוצר - עמודה גמישה */}
       <div className="min-w-0">
         {/* שם המוצר */}
-        <div className="flex items-center gap-1 mb-2">
+        <div className="flex items-center gap-1 mb-1">
           <div className="font-medium text-gray-800 leading-tight break-words flex-1">
             {item.name}
           </div>
@@ -116,6 +128,16 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
               <Edit className="w-3.5 h-3.5" />
             </button>
           )}
+        </div>
+        
+        {/* תג של מי הוסיף */}
+        <div className="flex items-center gap-1 mb-2">
+          <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full ${userColor.badge} text-xs ${userColor.text}`}>
+            <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center text-[10px] font-bold">
+              {userInitials}
+            </div>
+            <span className="font-medium">{userName}</span>
+          </div>
         </div>
         
         {/* כפתורי סטטוס */}
@@ -259,7 +281,7 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
           </div>
           
           <div className="absolute top-4 left-4 flex gap-2 z-[70]">
-            <label className="bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors shadow-lg cursor-pointer">
+            <label className={`bg-white rounded-full p-1.5 text-gray-800 transition-colors shadow-lg ${isUploading ? 'cursor-wait' : 'cursor-pointer hover:bg-gray-200'}`}>
               <input 
                 type="file" 
                 accept="image/*"
@@ -267,12 +289,13 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
                 onChange={handleImageUpload}
                 disabled={isUploading}
               />
-              <RefreshCw className={`w-6 h-6 ${isUploading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-6 h-6 ${isUploading ? 'animate-spin text-blue-500' : ''}`} />
             </label>
             <button
               onClick={() => setShowDeleteConfirm(true)}
               className="bg-white rounded-full p-1.5 text-red-600 hover:bg-red-50 transition-colors shadow-lg"
               aria-label="מחק תמונה"
+              disabled={isUploading}
             >
               <Trash2 className="w-6 h-6" />
             </button>

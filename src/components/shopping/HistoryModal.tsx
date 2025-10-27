@@ -50,6 +50,7 @@ export function HistoryModal({
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'date' | 'popularity'>('date');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   // חישוב סטטיסטיקות
   const stats = useMemo(() => {
     return {
@@ -472,6 +473,7 @@ export function HistoryModal({
                   const file = (e.target as HTMLInputElement).files?.[0];
                   if (file) {
                     try {
+                      setIsUploadingImage(true);
                       // מציאת המוצר המתאים
                       const item = historyItemsData.find(i => i.imageUrl === selectedImage);
                       if (item) {
@@ -484,15 +486,18 @@ export function HistoryModal({
                       }
                     } catch (error) {
                       console.error('שגיאה בהעלאת תמונה:', error);
+                    } finally {
+                      setIsUploadingImage(false);
                     }
                   }
                 };
                 input.click();
               }}
-              className="bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors shadow-lg"
+              className={`bg-white rounded-full p-1.5 text-gray-800 transition-colors shadow-lg ${isUploadingImage ? 'cursor-wait' : 'hover:bg-gray-200'}`}
               aria-label="החלף תמונה"
+              disabled={isUploadingImage}
             >
-              <RefreshCw className="w-6 h-6" />
+              <RefreshCw className={`w-6 h-6 ${isUploadingImage ? 'animate-spin text-blue-500' : ''}`} />
             </button>
             <button
               onClick={() => {
@@ -503,6 +508,7 @@ export function HistoryModal({
               }}
               className="bg-white rounded-full p-1.5 text-red-600 hover:bg-red-50 transition-colors shadow-lg"
               aria-label="מחיקת תמונה"
+              disabled={isUploadingImage}
             >
               <Trash2 className="w-6 h-6" />
             </button>

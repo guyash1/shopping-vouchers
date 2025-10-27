@@ -135,7 +135,7 @@ export function HouseholdSwitcherModal({ isOpen, onClose, onSuccess }: Props) {
 
   const shareViaWhatsApp = () => {
     if (!selectedHousehold) return;
-    const message = `הצטרפו למשק הבית "${selectedHousehold.name}" באפליקציה Carto!\n\nקוד שיתוף: ${selectedHousehold.code}\n\nהכנסו לאפליקציה והצטרפו למשק הבית המשותף שלנו 🏠`;
+    const message = `הצטרפו למשק הבית "${selectedHousehold.name}" ב-Carto!\n\nמה זה משק בית משותף?\nרשימת קניות חכמה ומשותפת שכל בני המשפחה יכולים לערוך ולעדכן בזמן אמת. כולם רואים מה צריך לקנות ומה כבר נקנה.\n\nאבל זה לא הכול! האפליקציה כוללת גם:\n• מערכת מתקדמת לניהול שוברים\n• שימוש נוח בשוברי סופרמרקט\n• סטטיסטיקות מפורטות על השוברים הקיימים בבית\nועוד...\n\nקוד ההצטרפות שלכם: ${selectedHousehold.code}\n\nאיך מצטרפים?\n1. היכנסו לאתר: https://carto.co.il\n2. הירשמו או התחברו\n3. הזינו את קוד ההצטרפות\n4. מתחילים לנהל את הקניות והשוברים ביחד!`;
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };

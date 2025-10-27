@@ -16,6 +16,7 @@ import { useVouchers } from '../contexts/VouchersContext';
 import { useHousehold } from '../contexts/HouseholdContext';
 import { useAuthModal } from '../contexts/AuthModalContext';
 import Header from './shared/Header';
+import { ScrollToTop } from './shared/ScrollToTop';
 
 const VOUCHER_CATEGORIES = [
   { id: "all", name: "הכל", icon: <List className="w-4 h-4" /> },
@@ -402,6 +403,17 @@ export default function Vouchers() {
             
             // עדכון הסכום הנותר
             await vouchersService.updateRemainingAmount(voucherId, remainingAmount);
+            
+            // אם היתרה הגיעה ל-0, שאל את המשתמש אם הוא רוצה למחוק את השובר
+            if (remainingAmount === 0) {
+                const shouldDelete = window.confirm(
+                    `השובר "${currentVoucher.storeName}" הגיע ליתרה 0 ₪.\n\nהאם ברצונך למחוק אותו?`
+                );
+                
+                if (shouldDelete) {
+                    await vouchersService.deleteVoucher(voucherId);
+                }
+            }
         } catch (error) {
             alert('שגיאה בעדכון הסכום הנותר: ' + (error instanceof Error ? error.message : String(error)));
             throw error;
@@ -441,6 +453,8 @@ export default function Vouchers() {
     return (
         <>
             <Header title="השוברים שלי" />
+            
+            <ScrollToTop />
             
             <div className="p-4 max-w-3xl mx-auto pb-24">
                 {/* כפתור הוספת שובר */}
@@ -770,6 +784,7 @@ export default function Vouchers() {
                                 onViewImage={(voucher) => setSelectedVoucher(voucher)}
                                 onUpdateExpiryDate={(voucherId, expiryDate) => handleUpdateExpiryDate(voucherId, expiryDate)}
                                 onUpdateRemainingAmount={(voucherId, remainingAmount) => handleUpdateRemainingAmount(voucherId, remainingAmount)}
+                                household={household}
                             />
                         ))}
                     </div>
@@ -790,74 +805,39 @@ export default function Vouchers() {
                     onClick={() => setSelectedVoucher(null)}
                 >
                     <div 
-                        className="relative w-full max-w-2xl max-h-[85vh] my-auto overflow-y-auto flex flex-col items-center scrollbar-hide"
+                        className="relative w-full max-w-2xl max-h-[90vh] my-auto flex flex-col items-center"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button
                             onClick={() => setSelectedVoucher(null)}
-                            className="absolute top-4 right-4 bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors z-[70] shadow-lg"
+                            className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-gray-800 hover:bg-white transition-colors z-[80] shadow-lg"
                             aria-label="סגור תמונה"
                         >
                             <X className="w-6 h-6" />
                         </button>
+                        
                         {/* כותרת השובר */}
-                        <div className="w-full text-center mb-4 px-2">
-                            <h2 className="text-2xl font-bold text-white drop-shadow mb-2">{selectedVoucher.storeName}</h2>
-                            {selectedVoucher.isPartial ? (
-                                <p className="text-lg text-gray-200">
-                                    נותרו: ₪{(selectedVoucher.remainingAmount ?? 0).toFixed(2)} מתוך ₪{selectedVoucher.amount.toFixed(2)}
-                                </p>
-                            ) : (
-                                <p className="text-lg text-gray-200">שובר על סך ₪{selectedVoucher.amount.toFixed(2)}</p>
-                            )}
+                        <div className="absolute top-4 left-0 right-0 text-center z-[70] px-16">
+                            <div className="inline-block bg-black/60 backdrop-blur-sm rounded-lg px-4 py-2">
+                                <h2 className="text-xl font-bold text-white drop-shadow">{selectedVoucher.storeName}</h2>
+                                {selectedVoucher.isPartial ? (
+                                    <p className="text-sm text-gray-200">
+                                        נותרו: ₪{(selectedVoucher.remainingAmount ?? 0).toFixed(2)} מתוך ₪{selectedVoucher.amount.toFixed(2)}
+                                    </p>
+                                ) : (
+                                    <p className="text-sm text-gray-200">₪{selectedVoucher.amount.toFixed(2)}</p>
+                                )}
+                            </div>
                         </div>
 
-                        <img
-                            src={selectedVoucher.imageUrl}
-                            alt="תמונת שובר מוגדלת"
-                            className="w-full rounded-lg shadow-lg"
-                            style={{ maxHeight: '80vh', objectFit: 'contain' }}
-                        />
-
-                        {/* כפתורי פעולה - עם מרווח נוסף מהתחתית */}
-                        <div className="flex justify-center gap-4 mt-6 mb-4">
-                            {selectedVoucher.isUsed ? (
-                                <button
-                                    onClick={() => {
-                                        if (selectedVoucher) {
-                                           handleToggleVoucherUsed(selectedVoucher.id, selectedVoucher.isUsed);
-                                           setSelectedVoucher({ ...selectedVoucher, isUsed: !selectedVoucher.isUsed });
-                                        }
-                                    }}
-                                    className="flex items-center gap-2 px-6 py-3 bg-yellow-500 text-white rounded-lg text-lg shadow-lg hover:bg-yellow-600 transition-colors font-medium"
-                                >
-                                    <RotateCcw className="w-5 h-5" />
-                                    <span>שחזור</span>
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => {
-                                        if (selectedVoucher) {
-                                           handleToggleVoucherUsed(selectedVoucher.id, selectedVoucher.isUsed);
-                                           setSelectedVoucher({ ...selectedVoucher, isUsed: !selectedVoucher.isUsed });
-                                        }
-                                    }}
-                                    className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg text-lg shadow-lg hover:bg-green-700 transition-colors font-medium"
-                                >
-                                    <CheckCircle className="w-5 h-5" />
-                                    <span>מומש</span>
-                                </button>
-                            )}
-                            <button
-                                onClick={() => {
-                                    handleDeleteVoucher(selectedVoucher);
-                                    setSelectedVoucher(null);
-                                }}
-                                className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg text-lg shadow-lg hover:bg-red-700 transition-colors font-medium"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                                <span>מחיקה</span>
-                            </button>
+                        {/* תמונה */}
+                        <div className="relative w-full h-full flex items-center justify-center">
+                            <img
+                                src={selectedVoucher.imageUrl}
+                                alt="תמונת שובר מוגדלת"
+                                className="w-full h-full object-contain"
+                                style={{ maxHeight: '90vh' }}
+                            />
                         </div>
                     </div>
                 </div>

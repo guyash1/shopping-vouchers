@@ -19,6 +19,7 @@ import { useHousehold } from '../contexts/HouseholdContext';
 import { usePageVisibility } from '../utils/usePageVisibility';
 import { useAuthModal } from '../contexts/AuthModalContext';
 import { useFirstTimeUser } from '../hooks/useFirstTimeUser';
+import { ScrollToTop } from './shared/ScrollToTop';
 
 Modal.setAppElement('#root');
 
@@ -26,36 +27,27 @@ export default function ShoppingList() {
   const { selectedHousehold } = useHousehold();
   const [user] = useAuthState(auth);
   const { openAuthModal } = useAuthModal();
-  const { shouldShowOnboarding, markOnboardingAsSeen } = useFirstTimeUser();
+  const { markOnboardingAsSeen } = useFirstTimeUser();
   const { isActive } = usePageVisibility({ inactivityTimeout: 10, enableInactivityTimeout: true });
   const location = useLocation();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   
-  // Show onboarding for first-time users ONLY (prevent double showing)
-  const [hasTriggeredOnboarding, setHasTriggeredOnboarding] = useState(false);
-  
-  useEffect(() => {
-    // Only show for new users who haven't seen it before AND are logged in
-    if (shouldShowOnboarding && user && !isHelpModalOpen && !hasTriggeredOnboarding) {
-      setIsHelpModalOpen(true);
-      setHasTriggeredOnboarding(true);
-      markOnboardingAsSeen(); // Mark as seen immediately to prevent double showing
-    }
-  }, [shouldShowOnboarding, user, isHelpModalOpen, hasTriggeredOnboarding, markOnboardingAsSeen]);
-
-  // Listen for manual help modal trigger (e.g. after household creation)
+  // Listen for help modal trigger after household creation/join
+  // This ensures the tutorial is shown ONLY ONCE after registration when user creates/joins household
   useEffect(() => {
     const handler = () => {
-      // Only show if user is logged in and it's after household creation
+      // Only show if user is logged in
       if (user) {
         setIsHelpModalOpen(true);
+        // Mark as seen so it won't show again
+        markOnboardingAsSeen();
       }
     };
     window.addEventListener('openHelpModal', handler);
     return () => window.removeEventListener('openHelpModal', handler);
-  }, [user]);
+  }, [user, markOnboardingAsSeen]);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isEditQuantityModalOpen, setIsEditQuantityModalOpen] = useState(false);
   const [isPartialItemModalOpen, setIsPartialItemModalOpen] = useState(false);
@@ -595,10 +587,11 @@ export default function ShoppingList() {
         const existingItem = doc.data();
         
         
-        // עדכון הפריט
+        // עדכון הפריט - כולל מי החזיר אותו לרשימה
         await shoppingListService.updateItem(doc.id, {
           status: 'pending',
-          quantity: quantity
+          quantity: quantity,
+          addedBy: user.uid  // עדכון מי אחראי על המוצר כרגע
         });
         
         // עדכון לוקאלי
@@ -607,14 +600,14 @@ export default function ShoppingList() {
           const itemExists = prev.some(item => item.id === doc.id);
           
           if (itemExists) {
-            // אם קיים, מעדכנים את הסטטוס והכמות
+            // אם קיים, מעדכנים את הסטטוס, הכמות ומי החזיר אותו
             return prev.map(item =>
               item.id === doc.id
-                ? { ...item, status: 'pending', quantity }
+                ? { ...item, status: 'pending', quantity, addedBy: user.uid }
                 : item
             );
           } else {
-            // אם לא קיים, מוסיפים אותו לרשימה
+            // אם לא קיים, מוסיפים אותו לרשימה עם המשתמש הנוכחי
             return [...prev, {
               id: doc.id,
               name: itemName,
@@ -623,7 +616,7 @@ export default function ShoppingList() {
               imageUrl: existingItem.imageUrl || null,
               purchaseCount: existingItem.purchaseCount || 0,
               lastPurchaseDate: existingItem.lastPurchaseDate?.toDate(),
-              addedBy: existingItem.addedBy,
+              addedBy: user.uid,  // המשתמש שהחזיר את המוצר
               householdId: existingItem.householdId,
               category: existingItem.category
             } as Item];
@@ -1007,9 +1000,10 @@ export default function ShoppingList() {
     try {
       const itemRef = doc(db, 'items', id);
       
-      // Update the name first
+      // Update the name first - עדכון מי שינה את השם
       await updateDoc(itemRef, {
         name: newName.trim(),
+        addedBy: user.uid,  // מי ששינה את השם הופך לבעלים הנוכחי
         updatedAt: serverTimestamp()
       });
 
@@ -1157,6 +1151,8 @@ export default function ShoppingList() {
         onHelpClick={() => setIsHelpModalOpen(true)}
       />
       
+      <ScrollToTop />
+      
       <div className="max-w-md mx-auto p-4 pb-24">
 
       <AddItemForm 
@@ -1292,6 +1288,7 @@ export default function ShoppingList() {
                         await handleSaveQuantity(id, newQuantity);
                       }}
                       onEditName={handleEditName}
+                      household={selectedHousehold}
                     />
                   </div>
                 ))}

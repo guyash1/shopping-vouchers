@@ -41,3 +41,5 @@ firebaserc
 
 # Project specific
 BACKLOG_TODO.md
+FIRESTORE_OPTIMIZATION_PLAN.md
+README.firebase.md

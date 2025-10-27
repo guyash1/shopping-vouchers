@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Voucher } from '../../types/vouchers';
 import { Calendar, CheckCircle, X, Upload, Trash2, ShoppingCart, Utensils, Droplet, ShoppingBag, Gift, Edit, Plus } from 'lucide-react';
+import { getUserColor, getUserName, getInitials } from '../../utils/userColors';
+import { Household } from '../../types/household';
 
 // קטגוריות שוברים ואייקונים
 const CATEGORY_ICONS = {
@@ -28,6 +30,7 @@ interface VoucherItemProps {
   onViewImage?: (voucher: Voucher) => void;
   onUpdateExpiryDate?: (voucherId: string, expiryDate: string | null) => Promise<void>;
   onUpdateRemainingAmount?: (voucherId: string, remainingAmount: number) => Promise<void>;
+  household: Household | null;
 }
 
 export const VoucherItem: React.FC<VoucherItemProps> = ({
@@ -37,8 +40,13 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
   onUploadImage,
   onViewImage,
   onUpdateExpiryDate,
-  onUpdateRemainingAmount
+  onUpdateRemainingAmount,
+  household
 }) => {
+  // קבלת פרטי המשתמש שהוסיף
+  const userColor = getUserColor(voucher.userId);
+  const userName = getUserName(voucher.userId, household);
+  const userInitials = getInitials(userName);
   const [showImageOptions, setShowImageOptions] = useState(false);
   const [showExpiryDatePicker, setShowExpiryDatePicker] = useState(false);
   const [showRemainingAmountEditor, setShowRemainingAmountEditor] = useState(false);
@@ -156,6 +164,8 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
   const openRemainingAmountEditor = () => {
     if (voucher.isPartial) {
       setUsedAmountInput('');
+      // סגירת תפריט עריכת יתרה אם פתוח
+      setShowEditRemainingEditor(false);
       setShowRemainingAmountEditor(true);
     }
   };
@@ -163,6 +173,8 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
   const openEditRemainingEditor = () => {
     const currentRemaining = typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount : voucher.amount;
     setEditRemainingInput(currentRemaining.toString());
+    // סגירת תפריט שימוש בסכום אם פתוח
+    setShowRemainingAmountEditor(false);
     setShowEditRemainingEditor(true);
   };
 
@@ -285,6 +297,17 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
           <div className="flex justify-between mb-3">
             <div>
               <h3 className="font-bold text-xl text-gray-800">{voucher.storeName}</h3>
+              
+              {/* תג של מי הוסיף */}
+              <div className="flex items-center gap-1 mt-1 mb-1">
+                <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full ${userColor.badge} text-xs ${userColor.text}`}>
+                  <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center text-[10px] font-bold">
+                    {userInitials}
+                  </div>
+                  <span className="font-medium">{userName}</span>
+                </div>
+              </div>
+              
               <div className="flex items-center mt-1">
                 <p className="text-xl font-bold text-green-600">₪{typeof voucher.amount === 'number' ? voucher.amount.toFixed(2) : '0.00'}</p>
                 

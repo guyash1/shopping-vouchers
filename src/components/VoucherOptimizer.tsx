@@ -306,60 +306,74 @@ export default function RedeemVouchers() {
             className="relative w-full max-w-2xl max-h-[85vh] my-auto overflow-y-auto flex flex-col items-center scrollbar-hide" 
             onClick={e => e.stopPropagation()}
           >
-            <button className="absolute top-4 right-4 bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors z-[70] shadow-lg" onClick={finishWizard}>
+            <button 
+              className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-gray-800 hover:bg-white transition-colors z-[80] shadow-lg" 
+              onClick={(e) => {
+                e.stopPropagation();
+                finishWizard();
+              }}
+              aria-label="סגור"
+            >
               <X className="w-6 h-6" />
             </button>
 
-            {/* כותרת השובר - עם רקע כהה כמו במודל הגדלת תמונה */}
-            <div className="w-full text-center mb-4 px-2">
-              <h2 className="text-3xl font-bold text-white drop-shadow mb-2">{currentVoucher.storeName}</h2>
-              {currentVoucher.isPartial ? (
-                <p className="text-lg text-gray-200">נותרו: ₪{(currentVoucher.remainingAmount ?? 0).toFixed(2)} מתוך ₪{currentVoucher.amount.toFixed(2)}</p>
-              ) : (
-                <p className="text-lg text-gray-200">שובר על סך ₪{currentVoucher.amount.toFixed(2)}</p>
-              )}
+            {/* כותרת השובר */}
+            <div className="absolute top-4 left-0 right-0 text-center z-[70] px-16">
+              <div className="inline-block bg-black/60 backdrop-blur-sm rounded-lg px-4 py-2">
+                <h2 className="text-2xl font-bold text-white drop-shadow">{currentVoucher.storeName}</h2>
+                {currentVoucher.isPartial ? (
+                  <p className="text-sm text-gray-200">נותרו: ₪{(currentVoucher.remainingAmount ?? 0).toFixed(2)} מתוך ₪{currentVoucher.amount.toFixed(2)}</p>
+                ) : (
+                  <p className="text-sm text-gray-200">₪{currentVoucher.amount.toFixed(2)}</p>
+                )}
+              </div>
             </div>
 
-            {/* תמונה + חצים - תמונה גדולה יותר */}
-            <div className="relative w-full mb-6">
+            {/* תמונה + חצים */}
+            <div className="relative w-full h-full flex items-center justify-center">
               {currentVoucher.imageUrl && (
                 <img 
                   src={currentVoucher.imageUrl} 
                   alt="ברקוד שובר" 
-                  className="w-full rounded-lg shadow-lg"
-                  style={{ maxHeight: '75vh', objectFit: 'contain' }}
+                  className="w-full h-full object-contain"
+                  style={{ maxHeight: '85vh' }}
                 />
               )}
               {/* חץ שמאל */}
               {wizIdx > 0 && (
-                <button onClick={goPrev} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors">
+                <button onClick={goPrev} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl hover:bg-white hover:scale-110 active:scale-95 transition-all z-[70]">
                   <ChevronLeft className="w-6 h-6 text-gray-800" />
                 </button>
               )}
               {/* חץ ימין */}
               {wizIdx < wizardVouchers.length - 1 && (
-                <button onClick={proceedNext} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors">
+                <button onClick={proceedNext} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-xl hover:bg-white hover:scale-110 active:scale-95 transition-all z-[70]">
                   <ChevronRight className="w-6 h-6 text-gray-800" />
                 </button>
               )}
             </div>
 
-            {/* כפתור מימוש */}
-            <div className="flex justify-center mb-6 mt-6">
-              <button
-                onClick={handleWizardToggleUsed}
-                className="flex items-center gap-2 px-8 py-3 bg-green-600 text-white rounded-lg shadow-lg hover:bg-green-700 transition-colors font-medium text-lg"
-              >
-                <CheckCircle className="w-6 h-6" />
-                <span>{currentVoucher.isUsed ? 'הסר סימון' : 'מומש'}</span>
-              </button>
-            </div>
+            {/* כפתור מימוש + מחוון התקדמות - צפים בתחתית */}
+            <div className="absolute bottom-0 left-0 right-0 z-[75]">
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent pointer-events-none" style={{ height: '180px' }}></div>
+              
+              {/* תוכן */}
+              <div className="relative flex flex-col items-center gap-4 pb-6 pt-10">
+                {/* כפתור מימוש */}
+                <button
+                  onClick={handleWizardToggleUsed}
+                  className="flex items-center gap-2 px-8 py-3 bg-green-600 text-white rounded-lg shadow-xl hover:bg-green-700 hover:scale-105 active:scale-95 transition-all font-medium text-lg"
+                >
+                  <CheckCircle className="w-6 h-6" />
+                  <span>{currentVoucher.isUsed ? 'הסר סימון' : 'מומש'}</span>
+                </button>
 
-            {/* מחוון התקדמות */}
-            <div className="text-center mb-4">
-              <span className="text-lg font-medium text-white bg-black/30 px-4 py-2 rounded-full">
-                {wizIdx + 1} / {wizardVouchers.length}
-              </span>
+                {/* מחוון התקדמות */}
+                <span className="text-base font-medium text-white bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg">
+                  {wizIdx + 1} / {wizardVouchers.length}
+                </span>
+              </div>
             </div>
           </div>
         </div>

@@ -325,21 +325,29 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
       
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1 cursor-pointer text-blue-500 hover:text-blue-600 text-sm">
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageChange}
-            />
-            <Camera className="w-4 h-4" />
-            <span>
-              {imagePreview ? 'החלפת תמונה' : 'הוספת תמונה'}
-            </span>
-          </label>
+          {validatingImage ? (
+            <div className="flex items-center gap-1 text-blue-500 text-sm">
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+              <span>מעלה תמונה...</span>
+            </div>
+          ) : (
+            <label className="flex items-center gap-1 cursor-pointer text-blue-500 hover:text-blue-600 text-sm">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+                disabled={validatingImage}
+              />
+              <Camera className="w-4 h-4" />
+              <span>
+                {imagePreview ? 'החלפת תמונה' : 'הוספת תמונה'}
+              </span>
+            </label>
+          )}
           
-          {imagePreview && (
+          {imagePreview && !validatingImage && (
             <div className="flex items-center gap-1">
               <div className="w-6 h-6 relative overflow-hidden rounded">
                 <img 
