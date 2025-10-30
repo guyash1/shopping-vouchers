@@ -1172,34 +1172,36 @@ export default function ShoppingList() {
         activeItems={items.filter(item => item.status === 'pending' || item.status === 'missing')}
       />
 
-      {/* Shopping mode toggle - Always visible */}
-      <div className="mb-4">
-        <button
-          onClick={() => {
-            // אם יש פריטים מסומנים במצב קניות, סיום קניות
-            if (isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')) {
-              handleFinishShopping();
-            } else {
-              // אחרת, הפעל/בטל מצב קניות
-              toggleShoppingMode();
-            }
-          }}
-          className={`w-full py-2 px-4 rounded-md text-white font-medium shadow transition-colors ${
-            isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing') 
-              ? 'bg-green-600 hover:bg-green-700' 
+      {/* Shopping mode toggle - Visible only if there are items */}
+      {items.length > 0 && (
+        <div className="mb-4">
+          <button
+            onClick={() => {
+              // אם יש פריטים מסומנים במצב קניות, סיום קניות
+              if (isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')) {
+                handleFinishShopping();
+              } else {
+                // אחרת, הפעל/בטל מצב קניות
+                toggleShoppingMode();
+              }
+            }}
+            className={`w-full py-2 px-4 rounded-md text-white font-medium shadow transition-colors ${
+              isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing') 
+                ? 'bg-green-600 hover:bg-green-700' 
+                : isShoppingActive 
+                  ? 'bg-yellow-500 hover:bg-yellow-600' 
+                  : 'bg-blue-500 hover:bg-blue-600'
+            }`}
+          >
+            {isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')
+              ? 'סיום קניות'
               : isShoppingActive 
-                ? 'bg-yellow-500 hover:bg-yellow-600' 
-                : 'bg-blue-500 hover:bg-blue-600'
-          }`}
-        >
-          {isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')
-            ? 'סיום קניות'
-            : isShoppingActive 
-              ? 'סגור מצב קניות' 
-              : 'התחל קניות'
-          }
-        </button>
-      </div>
+                ? 'סגור מצב קניות' 
+                : 'התחל קניות'
+            }
+          </button>
+        </div>
+      )}
 
       {/* Shopping progress statistics */}
       {isShoppingActive && displayItems.length > 0 && (
