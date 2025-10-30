@@ -64,6 +64,14 @@ export default function ShoppingList() {
   const [partialItems, setPartialItems] = useState<Item[]>([]);
   const [isShoppingActive, setIsShoppingActive] = useState(false);
 
+  // סגירת מצב קניות אוטומטית כשאין פריטים במצב pending
+  useEffect(() => {
+    const hasPendingItems = items.some(item => item.status === 'pending');
+    if (!hasPendingItems && isShoppingActive) {
+      setIsShoppingActive(false);
+    }
+  }, [items, isShoppingActive]);
+
   // פונקציה לקבלת אייקון לקטגוריה
   const getCategoryIcon = (category?: ShoppingCategory) => {
     switch (category) {
@@ -1172,8 +1180,8 @@ export default function ShoppingList() {
         activeItems={items.filter(item => item.status === 'pending' || item.status === 'missing')}
       />
 
-      {/* Shopping mode toggle - Visible only if there are items */}
-      {items.length > 0 && (
+      {/* Shopping mode toggle - Visible only if there are pending items */}
+      {items.some(item => item.status === 'pending') && (
         <div className="mb-4">
           <button
             onClick={() => {

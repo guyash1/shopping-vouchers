@@ -457,49 +457,112 @@ export default function Vouchers() {
             <ScrollToTop />
             
             <div className="p-4 max-w-3xl mx-auto pb-24">
-                {/* כפתור הוספת שובר - מופיע רק אם יש שוברים */}
-                {vouchers.length > 0 && (
-                    <div className="flex justify-end items-center mb-4">
+            {/* אזור חיפוש וכפתור הוספה - מופיע רק אם יש שוברים */}
+            {vouchers.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm p-4 mb-4 max-w-xl mx-auto">
+                    {/* שורה 1: כפתורים ופעולות */}
+                    <div className="flex items-center gap-2 mb-3">
                         <button
                             onClick={() => setIsAddModalOpen(true)}
-                            className="flex items-center gap-1 p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
+                            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium text-sm whitespace-nowrap"
                             aria-label="הוספת שובר חדש"
                         >
-                            <Plus className="w-5 h-5" />
+                            <Plus className="w-4 h-4" />
+                            <span>הוסף</span>
                         </button>
-                    </div>
-                )}
-
-            {/* אזור החיפוש והסינון - מופיע רק אם יש שוברים */}
-            {vouchers.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm p-3 mb-4">
-                    <div className="flex items-center gap-2 mb-3">
                         <div className="relative flex-1">
                             <input
                                 type="text"
-                                placeholder="חפש לפי שם חנות..."
+                                placeholder="חפש..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pr-3 pl-10 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                className="w-full pr-3 pl-9 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
                                 dir="rtl"
                             />
                             {searchTerm ? (
                                 <button 
                                     onClick={() => setSearchTerm('')}
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                    className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
                             ) : (
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                             )}
                         </div>
                         <button
-                            className={`p-2 rounded-lg border ${showFilters ? 'bg-blue-50 border-blue-300' : 'border-gray-300'}`}
+                            className={`p-2 rounded-lg border transition-colors ${
+                                showFilters || selectedCategory !== 'all' || expiryFilter !== 'all'
+                                    ? 'bg-blue-50 border-blue-300' 
+                                    : 'border-gray-300 hover:bg-gray-50'
+                            }`}
                             onClick={() => setShowFilters(!showFilters)}
                         >
-                            <Filter className="w-5 h-5 text-gray-600" />
+                            <Filter className={`w-5 h-5 ${selectedCategory !== 'all' || expiryFilter !== 'all' ? 'text-blue-600' : 'text-gray-600'}`} />
                         </button>
+                    </div>
+                    
+                    {/* שורה 2: מיון מהיר */}
+                    <div className="flex items-center gap-3 text-sm">
+                        <span className="text-gray-600 font-medium">מיון לפי</span>
+                        <div className="flex gap-2">
+                            <div className="relative dropdown-container">
+                                <button
+                                    className="flex items-center justify-between px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white hover:bg-gray-50 transition-colors min-w-[130px]"
+                                    onClick={() => toggleDropdown('sort-main')}
+                                >
+                                    <span>
+                                        {sortBy === 'date' && 'תאריך הוספה'}
+                                        {sortBy === 'expiry' && 'תאריך תפוגה'}
+                                        {sortBy === 'amount' && 'סכום'}
+                                    </span>
+                                    <ChevronDown className="w-4 h-4 mr-2" />
+                                </button>
+                                
+                                {activeDropdown === 'sort-main' && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                        <button 
+                                            className="w-full text-right px-3 py-2 text-sm hover:bg-gray-100 rounded-t-lg"
+                                            onClick={() => {
+                                                setSortBy('date');
+                                                closeAllDropdowns();
+                                            }}
+                                        >
+                                            תאריך הוספה
+                                        </button>
+                                        <button 
+                                            className="w-full text-right px-3 py-2 text-sm hover:bg-gray-100"
+                                            onClick={() => {
+                                                setSortBy('expiry');
+                                                closeAllDropdowns();
+                                            }}
+                                        >
+                                            תאריך תפוגה
+                                        </button>
+                                        <button 
+                                            className="w-full text-right px-3 py-2 text-sm hover:bg-gray-100 rounded-b-lg"
+                                            onClick={() => {
+                                                setSortBy('amount');
+                                                closeAllDropdowns();
+                                            }}
+                                        >
+                                            סכום
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <button
+                                className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white hover:bg-gray-50 transition-colors"
+                                onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                            >
+                                {sortBy === 'amount' ? 
+                                    (sortOrder === 'desc' ? 'מהיקר לזול' : 'מהזול ליקר') : 
+                                    sortBy === 'expiry' ?
+                                    (sortOrder === 'desc' ? 'מהרחוק לקרוב' : 'מהקרוב לרחוק') :
+                                    (sortOrder === 'desc' ? 'מהחדש לישן' : 'מהישן לחדש')}
+                            </button>
+                        </div>
                     </div>
 
                     {/* פילטרים מורחבים */}
@@ -599,72 +662,6 @@ export default function Vouchers() {
                                     )}
                                 </div>
                             </div>
-
-                            {/* אפשרויות מיון */}
-                            <div className="flex flex-wrap gap-3">
-                                <div>
-                                    <h3 className="text-sm font-medium text-gray-700 mb-1">מיין לפי</h3>
-                                    <div className="relative dropdown-container">
-                                        <button
-                                            className="flex items-center justify-between w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
-                                            onClick={() => toggleDropdown('sort')}
-                                        >
-                                            <span>
-                                                {sortBy === 'date' && 'תאריך הוספה'}
-                                                {sortBy === 'expiry' && 'תאריך תפוגה'}
-                                                {sortBy === 'amount' && 'סכום'}
-                                            </span>
-                                            <ChevronDown className="w-4 h-4" />
-                                        </button>
-                                        
-                                        {activeDropdown === 'sort' && (
-                                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                                                <button 
-                                                    className="w-full text-right px-3 py-2 text-sm hover:bg-gray-100"
-                                                    onClick={() => {
-                                                        setSortBy('date');
-                                                        closeAllDropdowns();
-                                                    }}
-                                                >
-                                                    תאריך הוספה
-                                                </button>
-                                                <button 
-                                                    className="w-full text-right px-3 py-2 text-sm hover:bg-gray-100"
-                                                    onClick={() => {
-                                                        setSortBy('expiry');
-                                                        closeAllDropdowns();
-                                                    }}
-                                                >
-                                                    תאריך תפוגה
-                                                </button>
-                                                <button 
-                                                    className="w-full text-right px-3 py-2 text-sm hover:bg-gray-100"
-                                                    onClick={() => {
-                                                        setSortBy('amount');
-                                                        closeAllDropdowns();
-                                                    }}
-                                                >
-                                                    סכום
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                                
-                                <div>
-                                    <h3 className="text-sm font-medium text-gray-700 mb-1">סדר</h3>
-                                    <button
-                                        className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
-                                        onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-                                    >
-                                        {sortBy === 'amount' ? 
-                                            (sortOrder === 'desc' ? 'מהיקר לזול' : 'מהזול ליקר') : 
-                                            sortBy === 'expiry' ?
-                                            (sortOrder === 'desc' ? 'מהרחוק לקרוב' : 'מהקרוב לרחוק') :
-                                            (sortOrder === 'desc' ? 'מהחדש לישן' : 'מהישן לחדש')}
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     )}
                 </div>
@@ -676,26 +673,26 @@ export default function Vouchers() {
                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
                 </div>
             ) : filteredVouchers.length === 0 ? (
-                <div className="flex items-center justify-center min-h-[60vh]">
-                    <div className="text-center">
-                        {searchTerm || selectedCategory !== 'all' ? (
-                            // Filtered but no results
-                            <div className="bg-white rounded-xl p-8 text-center shadow-sm">
-                                <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                    <Gift className="w-8 h-8 text-gray-400" />
-                                </div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-1">אין שוברים להצגה</h3>
-                                <p className="text-gray-500 mb-4">לא נמצאו שוברים התואמים את החיפוש</p>
-                                <button
-                                    className="text-blue-600 hover:underline"
-                                    onClick={() => {
-                                        setSearchTerm('');
-                                        setSelectedCategory('all');
-                                    }}
-                                >
-                                    נקה מסננים
-                                </button>
+                <div className="text-center py-12">
+                    {(searchTerm || selectedCategory !== 'all' || expiryFilter !== 'all') && vouchers.length > 0 ? (
+                        // Filtered but no results
+                        <div className="bg-white rounded-xl p-8 text-center shadow-sm max-w-md mx-auto">
+                            <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                <Gift className="w-8 h-8 text-gray-400" />
                             </div>
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">אין שוברים להצגה</h3>
+                            <p className="text-gray-500 mb-4">לא נמצאו שוברים התואמים את הסינון</p>
+                            <button
+                                className="text-blue-600 hover:underline font-medium"
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    setSelectedCategory('all');
+                                    setExpiryFilter('all');
+                                }}
+                            >
+                                נקה את כל המסננים
+                            </button>
+                        </div>
                         ) : (
                             // No vouchers at all - Beautiful empty state
                             <>
@@ -724,20 +721,9 @@ export default function Vouchers() {
                                 </div>
                             </>
                         )}
-                    </div>
                 </div>
             ) : (
-                <>
-                    {/* כותרת דינמית של המיון הנוכחי */}
-                    <div className="flex justify-center mb-3">
-                        <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                            מיון לפי {sortBy === 'date' ? 'תאריך הוספה' : sortBy === 'expiry' ? 'תאריך תפוגה' : 'סכום'} | 
-                            {sortBy === 'amount' ? (sortOrder === 'desc' ? ' מהיקר לזול' : ' מהזול ליקר') : 
-                            sortBy === 'expiry' ? (sortOrder === 'desc' ? ' מהרחוק לקרוב' : ' מהקרוב לרחוק') :
-                            (sortOrder === 'desc' ? ' מהחדש לישן' : ' מהישן לחדש')}
-                        </div>
-                    </div>
-                    <div className="flex flex-col gap-4 max-w-xl mx-auto">
+                <div className="flex flex-col gap-4 max-w-xl mx-auto">
                         {filteredVouchers.map((voucher) => (
                             <VoucherItem
                                 key={voucher.id}
@@ -751,8 +737,7 @@ export default function Vouchers() {
                                 household={household}
                             />
                         ))}
-                    </div>
-                </>
+                </div>
             )}
 
             {/* מודל הוספת שובר */}
@@ -808,7 +793,7 @@ export default function Vouchers() {
             )}
 
             {/* הטאב בר הישן מוסר - משתמשים בBottomNavbar מה-App.tsx */}
-            </div>
+        </div>
         </>
     );
 } 
