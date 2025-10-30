@@ -205,7 +205,7 @@ export default function RedeemVouchers() {
 
   return (
     <>
-      <Header title="מימוש אופטימלי" showHouseholdSwitcher={false} />
+      <Header title="מימוש שוברי סופר" showHouseholdSwitcher={false} />
       
       <div className="max-w-md mx-auto p-4 space-y-4 pb-24">
       
@@ -214,21 +214,22 @@ export default function RedeemVouchers() {
         <div className="text-center py-12">
           <div className="w-24 h-24 mx-auto mb-6 bg-blue-50 rounded-full flex items-center justify-center">
             <svg className="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-3">אין שוברים זמינים</h3>
-          <p className="text-gray-600 mb-6 leading-relaxed">
-            כדי להשתמש במחשבון המימוש האופטימלי,<br />
-            צריך להוסיף שוברים קודם. אחרי שתוסיף שוברים<br />
-            תוכל לקבל המלצות איך לנצל אותם במיטב!
+          <h3 className="text-xl font-bold text-gray-900 mb-3">אין שוברי סופרמרקט</h3>
+          <p className="text-gray-600 mb-6 leading-relaxed px-4">
+            עמוד זה למימוש אופטימלי של <span className="font-semibold text-gray-800">שוברי סופרמרקט בלבד</span>.<br />
+            הוסיפו שוברים והגדירו אותם בקטגוריה "סופרמרקט" כדי להשתמש בכלי.
           </p>
-          <div className="bg-blue-50 rounded-lg p-4">
-            <p className="text-sm text-blue-800 font-medium mb-2">💡 איך זה עובד:</p>
-            <p className="text-sm text-blue-700">
-              1. הוסף שוברים בעמוד "שוברים"<br />
-              2. חזור לכאן וקבל המלצות אופטימליות
-            </p>
+          <div className="bg-blue-50 rounded-xl p-6 border border-blue-200 max-w-sm mx-auto">
+            <p className="text-sm text-gray-800 font-bold mb-3">🛒 איך זה עובד?</p>
+            <div className="text-right space-y-2 text-sm text-gray-700">
+              <p><span className="font-semibold">1.</span> הוסיפו שוברי סופרמרקט בעמוד "שוברים"</p>
+              <p><span className="font-semibold">2.</span> הזינו כמה יצאה לכם הקנייה</p>
+              <p><span className="font-semibold">3.</span> קבלו המלצה אופטימלית אילו שוברים לממש</p>
+              <p><span className="font-semibold">4.</span> השוברים שמומשו יימחקו לפי בקשתכם</p>
+            </div>
           </div>
         </div>
       ) : (

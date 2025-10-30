@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, ShoppingCart, MinusCircle, AlertCircle, Camera, History, Sparkles, CheckCircle, ChevronRight, ChevronLeft } from "lucide-react";
+import { X, ShoppingCart, MinusCircle, AlertCircle, Camera, History, Sparkles, CheckCircle, ChevronRight, ChevronLeft, Wallet } from "lucide-react";
 import Modal from "react-modal";
 
 // וידוא שהספרייה יודעת מי האלמנט השורש של האפליקציה
@@ -62,6 +62,19 @@ const TUTORIAL_STEPS = [
       "תמונות נשמרות אוטומטית",
       "חיסכון בזמן בקניות הבאות"
     ]
+  },
+  {
+    id: 6,
+    icon: <Wallet className="w-12 h-12 text-blue-500" />,
+    title: "מימוש שוברי סופר 💳",
+    description: "כלי חכם למימוש אופטימלי של שוברי סופרמרקט",
+    highlight: "💡 מה זה עושה? הכלי ממליץ לכם אילו שוברים לממש כדי להגיע בדיוק לסכום הקנייה!",
+    features: [
+      { icon: <CheckCircle className="w-5 h-5 text-green-500" />, text: "הזינו כמה יצאה לכם הקנייה" },
+      { icon: <Sparkles className="w-5 h-5 text-blue-500" />, text: "קבלו המלצה אופטימלית" },
+      { icon: <CheckCircle className="w-5 h-5 text-purple-500" />, text: "השוברים שמומשו נמחקים לפי בקשתכם" }
+    ],
+    tip: "עובד רק עם שוברים שהוגדרו בקטגוריה 'סופרמרקט'"
   }
 ];
 

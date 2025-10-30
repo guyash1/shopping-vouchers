@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LogOut, Home, Users, HelpCircle, LogIn } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
@@ -6,6 +6,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import Logo from './Logo';
 import { useHousehold } from '../../contexts/HouseholdContext';
 import { useAuthModal } from '../../contexts/AuthModalContext';
+import { userService } from '../../services/firebase';
 
 interface HeaderProps {
   title?: string;
@@ -23,6 +24,23 @@ export default function Header({
   const { selectedHousehold } = useHousehold();
   const [user] = useAuthState(auth);
   const { openAuthModal } = useAuthModal();
+  const [userDisplayName, setUserDisplayName] = useState<string>('');
+
+  // טעינת שם המשתמש
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (user) {
+        const profile = await userService.getUserProfile(user.uid);
+        if (profile) {
+          const name = profile.firstName || profile.displayName || user.displayName || 'משתמש';
+          setUserDisplayName(name);
+        } else {
+          setUserDisplayName(user.displayName || 'משתמש');
+        }
+      }
+    };
+    loadUserProfile();
+  }, [user]);
 
   const handleHouseholdSwitch = () => {
     const event = new CustomEvent('openHouseholdSwitcher');
@@ -36,6 +54,15 @@ export default function Header({
     }
   };
 
+  // קביעת ברכה לפי שעה
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'בוקר טוב';
+    if (hour >= 12 && hour < 18) return 'צהריים טובים';
+    if (hour >= 18 && hour < 21) return 'ערב טוב';
+    return 'לילה טוב'; // 21:00-5:00
+  };
+
   return (
     <div className="bg-white border-b sticky top-0 z-40 shadow-sm">
       <div className="max-w-md mx-auto px-4 py-3">
@@ -47,14 +74,32 @@ export default function Header({
               <h1 className="text-xl font-bold text-blue-600">
                 Carto
               </h1>
-              {user && selectedHousehold ? (
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Users className="w-3 h-3" aria-label="משק בית" />
-                  <span>{selectedHousehold.name}</span>
+              {user ? (
+                <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                  {userDisplayName && (
+                    <span className="font-medium">
+                      {getGreeting()}, {userDisplayName}
+                    </span>
+                  )}
+                  {selectedHousehold && userDisplayName && (
+                    <>
+                      <span className="text-gray-400">•</span>
+                      <div className="flex items-center gap-1 text-gray-500">
+                        <Users className="w-3 h-3" aria-label="משק בית" />
+                        <span>{selectedHousehold.name}</span>
+                      </div>
+                    </>
+                  )}
+                  {selectedHousehold && !userDisplayName && (
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <Users className="w-3 h-3" aria-label="משק בית" />
+                      <span>{selectedHousehold.name}</span>
+                    </div>
+                  )}
                 </div>
-              ) : !user ? (
+              ) : (
                 <p className="text-xs text-gray-500">רשימת קניות חכמה</p>
-              ) : null}
+              )}
             </div>
           </div>
 

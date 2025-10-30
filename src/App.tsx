@@ -24,11 +24,11 @@ function BottomNavbar() {
 
   return (
     <div className="fixed bottom-0 right-0 left-0 bg-white border-t z-50">
-      <nav className="max-w-md mx-auto flex justify-around p-2">
+      <nav className="max-w-md mx-auto flex p-2">
         <Link
           to="/"
           className={cn(
-            "flex flex-col items-center p-2 rounded-lg",
+            "flex-1 flex flex-col items-center p-2 rounded-lg",
             currentPath === "/" ? "text-blue-600" : "text-gray-600"
           )}
         >
@@ -38,7 +38,7 @@ function BottomNavbar() {
         <Link
           to="/vouchers"
           className={cn(
-            "flex flex-col items-center p-2 rounded-lg",
+            "flex-1 flex flex-col items-center p-2 rounded-lg",
             currentPath === "/vouchers" ? "text-blue-600" : "text-gray-600"
           )}
         >
@@ -48,7 +48,7 @@ function BottomNavbar() {
         <Link
           to="/stats"
           className={cn(
-            "flex flex-col items-center p-2 rounded-lg",
+            "flex-1 flex flex-col items-center p-2 rounded-lg",
             currentPath === "/stats" ? "text-blue-600" : "text-gray-600"
           )}
         >
@@ -58,12 +58,12 @@ function BottomNavbar() {
         <Link
           to="/redeem"
           className={cn(
-            "flex flex-col items-center p-2 rounded-lg",
+            "flex-1 flex flex-col items-center p-2 rounded-lg",
             currentPath === "/redeem" ? "text-blue-600" : "text-gray-600"
           )}
         >
           <Wallet className="w-6 h-6" />
-          <span className="text-xs mt-1">מימוש</span>
+          <span className="text-xs mt-1">מימוש סופר</span>
         </Link>
       </nav>
     </div>

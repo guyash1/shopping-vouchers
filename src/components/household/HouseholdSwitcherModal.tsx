@@ -220,7 +220,7 @@ export function HouseholdSwitcherModal({ isOpen, onClose, onSuccess }: Props) {
 
               {/* פרטי משק בית נבחר */}
             {selectedHousehold && (
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5 mb-6 border border-gray-200">
+                <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-5 mb-6 border-2 border-blue-200">
                   {/* שם משק בית עם אפשרות עריכה */}
                   <div className="mb-4">
                     {editingName ? (
@@ -257,24 +257,28 @@ export function HouseholdSwitcherModal({ isOpen, onClose, onSuccess }: Props) {
                           <X className="w-5 h-5" />
                         </button>
                       </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-gray-900">{selectedHousehold.name}</h3>
-                        {auth.currentUser?.uid === selectedHousehold.ownerId && (
-                          <button
-                            onClick={() => {
-                              setEditingName(true);
-                              setNewName(selectedHousehold.name);
-                            }}
-                            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                            title="ערוך שם משק בית"
-                          >
-                            <Edit2 className="w-4 h-4 text-gray-600" />
-                          </button>
-                        )}
+                      ) : (
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-xl font-bold text-gray-900">{selectedHousehold.name}</h3>
+                          {auth.currentUser?.uid === selectedHousehold.ownerId && (
+                            <button
+                              onClick={() => {
+                                setEditingName(true);
+                                setNewName(selectedHousehold.name);
+                              }}
+                              className="p-2 hover:bg-white/50 rounded-lg transition-colors"
+                              title="ערוך שם משק בית"
+                            >
+                              <Edit2 className="w-4 h-4 text-gray-600" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      <div className="text-sm text-gray-600 flex items-center gap-1.5">
+                        <Users className="w-4 h-4" />
+                        <span>{selectedHousehold.members ? Object.keys(selectedHousehold.members).length : 0} חברים במשק הבית</span>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
                   {/* קוד שיתוף */}
                   <div className="flex items-center justify-center gap-3 mb-4 bg-white rounded-lg p-3 border border-gray-200">
@@ -300,9 +304,9 @@ export function HouseholdSwitcherModal({ isOpen, onClose, onSuccess }: Props) {
 
                   {/* רשימת חברים */}
                   <div className="border-t border-gray-300 pt-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2 whitespace-nowrap">
                       <Users className="w-4 h-4" />
-                      חברי משק הבית ({selectedHousehold.members ? Object.keys(selectedHousehold.members).length : 0})
+                      <span>חברי משק הבית ({selectedHousehold.members ? Object.keys(selectedHousehold.members).length : 0})</span>
                     </h4>
                     <ul className="space-y-2 max-h-40 overflow-y-auto">
                       {selectedHousehold.members && Object.entries(selectedHousehold.members).map(([userId, member]) => {
@@ -363,7 +367,7 @@ export function HouseholdSwitcherModal({ isOpen, onClose, onSuccess }: Props) {
                 {auth.currentUser?.uid !== selectedHousehold.ownerId && (
                   <button
                     onClick={handleLeave}
-                      className="w-full mt-4 bg-red-100 text-red-600 py-2 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+                      className="w-full mt-4 bg-red-50 text-red-600 py-2.5 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium border border-red-200"
                     >
                       עזוב משק בית
                     </button>

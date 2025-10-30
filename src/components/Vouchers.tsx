@@ -457,56 +457,18 @@ export default function Vouchers() {
             <ScrollToTop />
             
             <div className="p-4 max-w-3xl mx-auto pb-24">
-                {/* כפתור הוספת שובר */}
-                <div className="flex justify-between items-center mb-4">
-                    {household ? (
-                        <div className="relative dropdown-container">
-                            <button
-                                onClick={() => toggleDropdown('household')}
-                                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                            >
-                                <Users className="w-4 h-4" />
-                                <span>{household.name}</span>
-                            </button>
-
-                            {activeDropdown === 'household' && (
-                                <div className="absolute top-full right-0 mt-1 bg-white shadow-md rounded-lg p-3 z-10 w-64">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h3 className="font-semibold">{household.name}</h3>
-                                        <button
-                                            onClick={() => closeAllDropdowns()}
-                                            className="text-gray-500 hover:text-gray-700"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    <p className="text-sm text-gray-600 mb-2">חברי משק הבית:</p>
-                                    <ul className="text-sm">
-                                        {household.members && Object.entries(household.members).map(([id, member]: [string, any]) => (
-                                            <li key={id} className="flex items-center gap-1 mb-1">
-                                                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                                                <span>{member.name || 'משתמש'}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-1 text-sm text-gray-500">
-                            <Users className="w-4 h-4" />
-                            <span>אישי</span>
-                        </div>
-                    )}
-
-                    <button
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="flex items-center gap-1 p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
-                        aria-label="הוספת שובר חדש"
-                    >
-                        <Plus className="w-5 h-5" />
-                    </button>
-                </div>
+                {/* כפתור הוספת שובר - מופיע רק אם יש שוברים */}
+                {vouchers.length > 0 && (
+                    <div className="flex justify-end items-center mb-4">
+                        <button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="flex items-center gap-1 p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
+                            aria-label="הוספת שובר חדש"
+                        >
+                            <Plus className="w-5 h-5" />
+                        </button>
+                    </div>
+                )}
 
             {/* אזור החיפוש והסינון - מופיע רק אם יש שוברים */}
             {vouchers.length > 0 && (
@@ -714,53 +676,55 @@ export default function Vouchers() {
                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
                 </div>
             ) : filteredVouchers.length === 0 ? (
-                <div className="text-center py-12">
-                    {searchTerm || selectedCategory !== 'all' ? (
-                        // Filtered but no results
-                        <div className="bg-white rounded-xl p-8 text-center shadow-sm">
-                            <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                <Gift className="w-8 h-8 text-gray-400" />
+                <div className="flex items-center justify-center min-h-[60vh]">
+                    <div className="text-center">
+                        {searchTerm || selectedCategory !== 'all' ? (
+                            // Filtered but no results
+                            <div className="bg-white rounded-xl p-8 text-center shadow-sm">
+                                <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                    <Gift className="w-8 h-8 text-gray-400" />
+                                </div>
+                                <h3 className="text-lg font-medium text-gray-900 mb-1">אין שוברים להצגה</h3>
+                                <p className="text-gray-500 mb-4">לא נמצאו שוברים התואמים את החיפוש</p>
+                                <button
+                                    className="text-blue-600 hover:underline"
+                                    onClick={() => {
+                                        setSearchTerm('');
+                                        setSelectedCategory('all');
+                                    }}
+                                >
+                                    נקה מסננים
+                                </button>
                             </div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-1">אין שוברים להצגה</h3>
-                            <p className="text-gray-500 mb-4">לא נמצאו שוברים התואמים את החיפוש</p>
-                            <button
-                                className="text-blue-600 hover:underline"
-                                onClick={() => {
-                                    setSearchTerm('');
-                                    setSelectedCategory('all');
-                                }}
-                            >
-                                נקה מסננים
-                            </button>
-                        </div>
-                    ) : (
-                        // No vouchers at all - Beautiful empty state
-                        <>
-                            <div className="w-24 h-24 mx-auto mb-6 bg-blue-50 rounded-full flex items-center justify-center">
-                                <svg className="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-3">אין עדיין שוברים</h3>
-                            <p className="text-gray-600 mb-6 leading-relaxed">
-                                התחילו לנהל את השוברים שלכם במקום אחד<br />
-                                ותדאגו שאף שובר לא יפוג בטעות!
-                            </p>
-                            <button
-                                onClick={() => setIsAddModalOpen(true)}
-                                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all font-semibold shadow-lg shadow-blue-500/30"
-                            >
-                                <Plus className="w-5 h-5" />
-                                <span>הוספת שובר ראשון</span>
-                            </button>
-                            <div className="bg-blue-50 rounded-lg p-4 mt-6 max-w-sm mx-auto">
-                                <p className="text-sm text-blue-800 font-medium mb-2">💡 טיפ:</p>
-                                <p className="text-sm text-blue-700">
-                                    צלמו או העלו תמונה של השובר כדי לגשת אליו בקלות בקופה
+                        ) : (
+                            // No vouchers at all - Beautiful empty state
+                            <>
+                                <div className="w-24 h-24 mx-auto mb-6 bg-blue-50 rounded-full flex items-center justify-center">
+                                    <svg className="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-3">אין עדיין שוברים</h3>
+                                <p className="text-gray-600 mb-6 leading-relaxed">
+                                    התחילו לנהל את השוברים שלכם במקום אחד<br />
+                                    ותדאגו שאף שובר לא יפוג בטעות!
                                 </p>
-                            </div>
-                        </>
-                    )}
+                                <button
+                                    onClick={() => setIsAddModalOpen(true)}
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all font-semibold shadow-lg shadow-blue-500/30"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                    <span>הוספת שובר ראשון</span>
+                                </button>
+                                <div className="bg-blue-50 rounded-lg p-4 mt-6 max-w-sm mx-auto">
+                                    <p className="text-sm text-blue-800 font-medium mb-2">💡 טיפ:</p>
+                                    <p className="text-sm text-blue-700">
+                                        צלמו או העלו תמונה של השובר כדי לגשת אליו בקלות בקופה
+                                    </p>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             ) : (
                 <>

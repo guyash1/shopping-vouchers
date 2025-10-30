@@ -273,21 +273,41 @@ export default function ShoppingList() {
   }, [isHistoryModalOpen, user, loadHistory]);
 
   // פונקציית עזר לבדיקה והוספת קטגוריה למוצר אם חסרה
-  const ensureItemHasCategory = (item: Item) => {
-    // בדיקה מהירה - אם יש קטגוריה או אם היא כבר 'כללי', לא צריך לעשות כלום
-    if (item.category && item.category !== 'כללי') {
+  const ensureItemHasCategory = (item: Item, forceRecategorize: boolean = false) => {
+    // אם forceRecategorize = true (שינוי שם), תמיד מסווג מחדש
+    // אחרת, רק אם אין קטגוריה או שהיא 'כללי'
+    if (!forceRecategorize && item.category && item.category !== 'כללי') {
       return;
     }
     
-    // רק אם אין קטגוריה או שהיא 'כללי' - קורא ל-AI ברקע
+    // קורא ל-AI לסווג את המוצר
     aiService.categorizeItem(item.name)
       .then(async (category) => {
-        if (category && category !== 'כללי' && category !== item.category) {
+        if (category && category !== item.category) {
+          // אם הקטגוריה השתנתה - מאפס את מונה הרכישות כי זה בעצם מוצר חדש
+          const updateData: any = { category };
+          
+          if (item.category && item.category !== 'כללי') {
+            // רק אם היה לפני כן קטגוריה ספציפית (לא כללי) - מאפס
+            updateData.purchaseCount = 0;
+            updateData.lastPurchaseDate = null;
+            updateData.lastPartialPurchaseDate = null;
+          }
+          
           // עדכון בדאטאבייס
-          await shoppingListService.updateItem(item.id, { category });
+          await shoppingListService.updateItem(item.id, updateData);
+          
           // עדכון הסטייט המקומי
           setItems(prev => prev.map(i => 
-            i.id === item.id ? { ...i, category } : i
+            i.id === item.id ? { 
+              ...i, 
+              category,
+              ...(updateData.purchaseCount !== undefined && {
+                purchaseCount: 0,
+                lastPurchaseDate: undefined,
+                lastPartialPurchaseDate: undefined
+              })
+            } : i
           ));
         }
       })
@@ -973,18 +993,8 @@ export default function ShoppingList() {
     setIsShoppingActive(!isShoppingActive);
   };
 
-  // סגירה אוטומטית של מצב קניות אם אין פריטים בסימון (רק כשמשתנים הפריטים, לא כשלוחצים על הכפתור)
-  useEffect(() => {
-    if (isShoppingActive && items.length > 0) {
-      const hasActiveItems = items.some(item => 
-        item.status === 'inCart' || item.status === 'missing' || item.status === 'partial'
-      );
-      
-      if (!hasActiveItems) {
-        setIsShoppingActive(false);
-      }
-    }
-  }, [items, isShoppingActive]);
+  // הערה: מצב קניות יכול להיות פעיל גם בלי פריטים בעגלה
+  // המשתמש יכול להתחיל קניות ואז להוסיף פריטים לעגלה בזמן הקנייה
 
   // פונקציה לעריכת שם המוצר
   const handleEditName = async (id: string, newName: string) => {
@@ -1007,10 +1017,10 @@ export default function ShoppingList() {
         updatedAt: serverTimestamp()
       });
 
-      // Re-categorize in the background (don't wait)
+      // Re-categorize in the background (don't wait) - תמיד מסווג מחדש כשמשנים שם
       const updatedItem = items.find(i => i.id === id);
       if (updatedItem) {
-        ensureItemHasCategory({ ...updatedItem, name: newName.trim() } as Item);
+        ensureItemHasCategory({ ...updatedItem, name: newName.trim() } as Item, true);
       }
     } catch (error) {
       console.error('Error updating item name:', error);
@@ -1162,36 +1172,34 @@ export default function ShoppingList() {
         activeItems={items.filter(item => item.status === 'pending' || item.status === 'missing')}
       />
 
-      {/* Shopping mode toggle */}
-      {displayItems.length > 0 && (
-        <div className="mb-4">
-          <button
-            onClick={() => {
-              // אם יש פריטים מסומנים במצב קניות, סיום קניות
-              if (isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')) {
-                handleFinishShopping();
-              } else {
-                // אחרת, הפעל/בטל מצב קניות
-                toggleShoppingMode();
-              }
-            }}
-            className={`w-full py-2 px-4 rounded-md text-white font-medium shadow transition-colors ${
-              isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing') 
-                ? 'bg-green-600 hover:bg-green-700' 
-                : isShoppingActive 
-                  ? 'bg-yellow-500 hover:bg-yellow-600' 
-                  : 'bg-blue-500 hover:bg-blue-600'
-            }`}
-          >
-            {isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')
-              ? 'סיום קניות'
-              : isShoppingActive 
-                ? 'סגור מצב קניות' 
-                : 'התחל קניות'
+      {/* Shopping mode toggle - Always visible */}
+      <div className="mb-4">
+        <button
+          onClick={() => {
+            // אם יש פריטים מסומנים במצב קניות, סיום קניות
+            if (isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')) {
+              handleFinishShopping();
+            } else {
+              // אחרת, הפעל/בטל מצב קניות
+              toggleShoppingMode();
             }
-          </button>
-        </div>
-      )}
+          }}
+          className={`w-full py-2 px-4 rounded-md text-white font-medium shadow transition-colors ${
+            isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing') 
+              ? 'bg-green-600 hover:bg-green-700' 
+              : isShoppingActive 
+                ? 'bg-yellow-500 hover:bg-yellow-600' 
+                : 'bg-blue-500 hover:bg-blue-600'
+          }`}
+        >
+          {isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')
+            ? 'סיום קניות'
+            : isShoppingActive 
+              ? 'סגור מצב קניות' 
+              : 'התחל קניות'
+          }
+        </button>
+      </div>
 
       {/* Shopping progress statistics */}
       {isShoppingActive && displayItems.length > 0 && (
