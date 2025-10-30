@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { 
-    Plus, Users, X, Search, 
+    Plus, X, Search, 
     ShoppingCart, Utensils, Droplet, ShoppingBag, 
     Gift, Filter, ChevronDown,
     List
