@@ -256,58 +256,57 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
       <Modal
         isOpen={isImageModalOpen}
         onRequestClose={() => setIsImageModalOpen(false)}
-        className="fixed inset-0 flex items-center justify-center z-[60] p-4 pb-24 overflow-hidden"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-80 z-[60]"
+        className="fixed inset-0 flex items-center justify-center z-[60] p-4 pb-24 overflow-y-auto"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-90 z-[60]"
         contentLabel={`תמונה של ${item.name}`}
       >
-        <div className="relative w-full max-w-2xl max-h-[85vh] my-auto overflow-y-auto flex flex-col items-center scrollbar-hide">
-          <button 
-            onClick={() => setIsImageModalOpen(false)}
-            className="absolute top-4 right-4 bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors z-[70] shadow-lg"
-            aria-label="סגור תמונה"
-          >
-            <X className="w-6 h-6" />
-          </button>
-          
-          {/* כפתורי פעולה */}
-          <div className="absolute top-4 right-4 flex gap-2 z-[70]">
-            <button
+        <div className="relative w-full max-w-2xl flex flex-col items-center gap-6 my-auto">
+          {/* כפתורי פעולה עליונים */}
+          <div className="flex items-center justify-between w-full px-2">
+            <button 
               onClick={() => setIsImageModalOpen(false)}
-              className="bg-white rounded-full p-1.5 text-gray-800 hover:bg-gray-200 transition-colors shadow-lg"
+              className="bg-white/20 backdrop-blur-md rounded-full p-2.5 text-white hover:bg-white/30 transition-colors"
               aria-label="סגור תמונה"
             >
-              <X className="w-6 h-6" />
+              <X className="w-7 h-7" />
             </button>
+
+            <div className="flex gap-2">
+              <label className={`bg-white/20 backdrop-blur-md rounded-full p-2.5 text-white transition-colors ${isUploading ? 'cursor-wait' : 'cursor-pointer hover:bg-white/30'}`}>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  className="hidden" 
+                  onChange={handleImageUpload}
+                  disabled={isUploading}
+                />
+                <RefreshCw className={`w-6 h-6 ${isUploading ? 'animate-spin' : ''}`} />
+              </label>
+              
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="bg-white/20 backdrop-blur-md rounded-full p-2.5 text-red-300 hover:bg-white/30 hover:text-red-200 transition-colors"
+                aria-label="מחק תמונה"
+                disabled={isUploading}
+              >
+                <Trash2 className="w-6 h-6" />
+              </button>
+            </div>
           </div>
           
-          <div className="absolute top-4 left-4 flex gap-2 z-[70]">
-            <label className={`bg-white rounded-full p-1.5 text-gray-800 transition-colors shadow-lg ${isUploading ? 'cursor-wait' : 'cursor-pointer hover:bg-gray-200'}`}>
-              <input 
-                type="file" 
-                accept="image/*"
-                className="hidden" 
-                onChange={handleImageUpload}
-                disabled={isUploading}
-              />
-              <RefreshCw className={`w-6 h-6 ${isUploading ? 'animate-spin text-blue-500' : ''}`} />
-            </label>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="bg-white rounded-full p-1.5 text-red-600 hover:bg-red-50 transition-colors shadow-lg"
-              aria-label="מחק תמונה"
-              disabled={isUploading}
-            >
-              <Trash2 className="w-6 h-6" />
-            </button>
+          {/* כותרת המוצר - מעל התמונה */}
+          <div className="w-full text-center">
+            <h2 className="text-3xl font-bold text-white drop-shadow-lg mb-2">{item.name}</h2>
+            <p className="text-xl text-yellow-300 font-semibold drop-shadow">כמות: {item.quantity}</p>
           </div>
 
           {/* תמונה מוגדלת */}
-          <div className="w-full">
+          <div className="w-full rounded-xl overflow-hidden shadow-2xl">
             <img 
               src={item.imageUrl || ''} 
               alt={item.name} 
-              className="w-full rounded-lg shadow-lg"
-              style={{ maxHeight: '85vh', objectFit: 'contain' }}
+              className="w-full h-auto object-contain"
+              style={{ maxHeight: '70vh' }}
             />
           </div>
         </div>

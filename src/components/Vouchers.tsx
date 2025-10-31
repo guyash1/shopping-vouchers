@@ -750,42 +750,46 @@ export default function Vouchers() {
             {/* תצוגת תמונה מוגדלת */}
             {selectedVoucher && selectedVoucher.imageUrl && (
                 <div 
-                    className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[60] p-4 pb-24 overflow-hidden"
+                    className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[60] p-4 pb-24 overflow-y-auto"
                     onClick={() => setSelectedVoucher(null)}
                 >
                     <div 
-                        className="relative w-full max-w-2xl max-h-[90vh] my-auto flex flex-col items-center"
+                        className="relative w-full max-w-2xl flex flex-col items-center gap-6 my-auto"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button
                             onClick={() => setSelectedVoucher(null)}
-                            className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-gray-800 hover:bg-white transition-colors z-[80] shadow-lg"
+                            className="self-center mb-2 bg-white/20 backdrop-blur-md rounded-full p-2.5 text-white hover:bg-white/30 transition-colors"
                             aria-label="סגור תמונה"
                         >
-                            <X className="w-6 h-6" />
+                            <X className="w-7 h-7" />
                         </button>
                         
-                        {/* כותרת השובר */}
-                        <div className="absolute top-4 left-0 right-0 text-center z-[70] px-16">
-                            <div className="inline-block bg-black/60 backdrop-blur-sm rounded-lg px-4 py-2">
-                                <h2 className="text-xl font-bold text-white drop-shadow">{selectedVoucher.storeName}</h2>
-                                {selectedVoucher.isPartial ? (
-                                    <p className="text-sm text-gray-200">
-                                        נותרו: ₪{(selectedVoucher.remainingAmount ?? 0).toFixed(2)} מתוך ₪{selectedVoucher.amount.toFixed(2)}
-                                    </p>
-                                ) : (
-                                    <p className="text-sm text-gray-200">₪{selectedVoucher.amount.toFixed(2)}</p>
-                                )}
-                            </div>
+                        {/* כותרת השובר - מעל התמונה */}
+                        <div className="w-full text-center">
+                            <h2 className="text-3xl font-bold text-white drop-shadow-lg mb-2">{selectedVoucher.storeName}</h2>
+                            {selectedVoucher.isPartial ? (
+                                <p className="text-xl text-white/90 drop-shadow">
+                                    <span className="font-bold text-yellow-300">נותרו: ₪{(selectedVoucher.remainingAmount ?? 0).toFixed(2)}</span>
+                                    {' '}מתוך ₪{selectedVoucher.amount.toFixed(2)}
+                                </p>
+                            ) : (
+                                <p className="text-2xl font-bold text-yellow-300 drop-shadow">₪{selectedVoucher.amount.toFixed(2)}</p>
+                            )}
+                            {selectedVoucher.expiryDate && (
+                                <p className="text-sm text-white/70 mt-2">
+                                    תוקף עד: {new Date(selectedVoucher.expiryDate).toLocaleDateString('he-IL')}
+                                </p>
+                            )}
                         </div>
 
                         {/* תמונה */}
-                        <div className="relative w-full h-full flex items-center justify-center">
+                        <div className="relative w-full rounded-xl overflow-hidden shadow-2xl">
                             <img
                                 src={selectedVoucher.imageUrl}
                                 alt="תמונת שובר מוגדלת"
-                                className="w-full h-full object-contain"
-                                style={{ maxHeight: '90vh' }}
+                                className="w-full h-auto object-contain"
+                                style={{ maxHeight: '70vh' }}
                             />
                         </div>
                     </div>
