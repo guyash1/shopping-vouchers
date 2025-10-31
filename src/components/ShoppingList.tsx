@@ -306,7 +306,7 @@ export default function ShoppingList() {
   }, [isHistoryModalOpen, user, loadHistory]);
 
   // פונקציית עזר לבדיקה והוספת קטגוריה למוצר אם חסרה
-  const ensureItemHasCategory = (item: Item, forceRecategorize: boolean = false) => {
+  const ensureItemHasCategory = useCallback((item: Item, forceRecategorize: boolean = false) => {
     // אם forceRecategorize = true (שינוי שם), תמיד מסווג מחדש
     // אחרת, רק אם אין קטגוריה או שהיא 'כללי'
     if (!forceRecategorize && item.category && item.category !== 'כללי') {
@@ -347,7 +347,7 @@ export default function ShoppingList() {
       .catch(error => {
         console.error('שגיאה בסיווג מוצר ברקע:', error);
       });
-  };
+  }, []); // אין dependencies - הפונקציה יציבה
 
   // הוספת פריט חדש לרשימת הקניות
   const handleAddItem = async (
