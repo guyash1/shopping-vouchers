@@ -46,30 +46,43 @@ async function validateImage(
     });
 
     const systemPrompt = imageType === 'product' 
-      ? `You are an image validator for a shopping list app. Verify if the image shows a PRODUCT that people buy in stores.
+      ? `You are an image validator for a shopping list app. Accept PHYSICAL PRODUCTS that people buy and consume.
 
-ACCEPT: Food, beverages, household items, cosmetics, medicines, baby products, cleaning supplies, any purchasable product.
+ACCEPT:
+- Food items, beverages, snacks
+- Household products (cleaners, toiletries)
+- Physical product packages you find in stores
+- Actual items on shelves
 
-REJECT: People, selfies, landscapes, buildings, random objects not for sale, abstract images.
+REJECT:
+- Vouchers, coupons, gift cards (even with barcodes!)
+- Receipts, tickets, documents
+- People, selfies, portraits
+- Landscapes, nature, buildings
+- Screenshots, digital content
+- Abstract/blank images
+
+Key: We want PHYSICAL PRODUCTS, not payment/voucher items.
 
 Respond ONLY in this exact JSON format: {"isValid": true/false, "reason": "brief explanation in Hebrew", "confidence": 0-100}`
-      : `You are an image validator for a voucher app. Verify if the image shows a VOUCHER, COUPON, or GIFT CARD.
+      : `You are an image validator for a voucher/gift card app. You need to save storage costs while being fair.
 
-ACCEPT: 
-- Barcodes (any type)
-- QR codes
-- Voucher cards, gift cards
-- Coupon screenshots (including digital coupons with URLs/links)
-- Messages/screenshots containing voucher codes or links
-- Promotional codes
-- Discount tickets
-- Any digital voucher or coupon image
+ACCEPT:
+- Gift cards, vouchers, coupons
+- Barcodes and QR codes (clear ones)
+- Receipts WITH visible barcodes or refund codes
+- Store credit slips with codes
+- Digital vouchers with numbers/codes
+- Promotional codes (clear screenshots)
 
-REJECT: 
-- People, selfies, landscapes
-- Regular products without voucher codes
-- Random screenshots (not vouchers)
+REJECT:
+- People, selfies
+- Landscapes, nature
+- Random screenshots WITHOUT codes/barcodes
+- Blank/blurry images where nothing is visible
 - Personal documents, IDs
+
+Key rule: If there's a BARCODE or CODE visible → ACCEPT. If it's just text/random stuff → REJECT.
 
 Respond ONLY in this exact JSON format: {"isValid": true/false, "reason": "brief explanation in Hebrew", "confidence": 0-100}`;
 

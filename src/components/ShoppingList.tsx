@@ -65,12 +65,18 @@ export default function ShoppingList() {
   const [isShoppingActive, setIsShoppingActive] = useState(false);
 
   // סגירת מצב קניות אוטומטית כשאין פריטים במצב pending
+  const pendingCount = useMemo(() => items.filter(item => item.status === 'pending').length, [items]);
+  const activeShoppingCount = useMemo(() => 
+    items.filter(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing').length, 
+    [items]
+  );
+  
   useEffect(() => {
-    const hasPendingItems = items.some(item => item.status === 'pending');
-    if (!hasPendingItems && isShoppingActive) {
+    // סוגר את מצב הקניות רק אם אין pending וגם אין פריטים בעגלה/חלקי/חסר
+    if (pendingCount === 0 && activeShoppingCount === 0 && isShoppingActive) {
       setIsShoppingActive(false);
     }
-  }, [items, isShoppingActive]);
+  }, [pendingCount, activeShoppingCount, isShoppingActive]);
 
   // פונקציה לקבלת אייקון לקטגוריה
   const getCategoryIcon = (category?: ShoppingCategory) => {
@@ -165,10 +171,30 @@ export default function ShoppingList() {
           lastPartialPurchaseDate: data.lastPartialPurchaseDate?.toDate(),
           householdId: data.householdId,
           addedBy: data.addedBy,
-          category: data.category
+          category: data.category,
+          createdAt: data.createdAt
         } as Item;
       });
-      setItems(liveItems);
+      
+      // עדכון רק אם יש שינוי אמיתי (למניעת re-renders מיותרים)
+      setItems(prev => {
+        if (prev.length !== liveItems.length) {
+          return liveItems;
+        }
+        // בדיקה אם יש שינוי בתוכן
+        const hasChanges = liveItems.some((newItem, idx) => {
+          const oldItem = prev.find(p => p.id === newItem.id);
+          if (!oldItem) return true;
+          return (
+            oldItem.status !== newItem.status ||
+            oldItem.quantity !== newItem.quantity ||
+            oldItem.name !== newItem.name ||
+            oldItem.imageUrl !== newItem.imageUrl
+          );
+        });
+        return hasChanges ? liveItems : prev;
+      });
+      
       setLoading(false);
     });
 
@@ -179,15 +205,14 @@ export default function ShoppingList() {
   }, [user, selectedHousehold, isActive, isShoppingRoute]);
 
   // הפעלת מצב קניות אוטומטי כאשר יש מוצר בעגלה
+  const inCartCount = useMemo(() => items.filter(item => item.status === 'inCart').length, [items]);
+  
   useEffect(() => {
-    // בודק אם יש לפחות מוצר אחד בעגלה
-    const hasItemInCart = items.some(item => item.status === 'inCart');
-    
     // אם יש פריט בעגלה, מפעיל את מצב הקניות אוטומטית
-    if (hasItemInCart && !isShoppingActive) {
+    if (inCartCount > 0 && !isShoppingActive) {
       setIsShoppingActive(true);
     }
-  }, [items, isShoppingActive]);
+  }, [inCartCount, isShoppingActive]);
 
   // טעינת היסטוריית רכישות
   const loadHistory = useCallback(async () => {
@@ -553,7 +578,7 @@ export default function ShoppingList() {
   }, []);
 
   // עדכון כמות
-  const handleSaveQuantity = async (id: string, newQuantity: number) => {
+  const handleSaveQuantity = useCallback(async (id: string, newQuantity: number) => {
     if (!user) {
       openAuthModal('edit');
       return;
@@ -577,7 +602,7 @@ export default function ShoppingList() {
     } catch (error) {
       console.error('שגיאה בעדכון כמות:', error);
     }
-  };
+  }, [user, openAuthModal]);
 
   // הוספת פריט מההיסטוריה
   const handleAddFromHistory = async (itemName: string, quantity: number = 1, imageUrl?: string) => {
@@ -669,7 +694,7 @@ export default function ShoppingList() {
       // טעינה מחדש של ההיסטוריה כדי לעדכן את הרשימה
       await loadHistory();
       
-      setIsHistoryModalOpen(false);
+      // לא סוגרים את המודל - נותנים למשתמש להוסיף עוד פריטים
     } catch (error) {
       console.error('שגיאה בהוספת פריט מההיסטוריה:', error);
     }
@@ -734,13 +759,14 @@ export default function ShoppingList() {
   };
 
   // העלאת תמונה
-  const handleUploadImage = async (file: File | null, itemId: string): Promise<string> => {
+  const handleUploadImage = useCallback(async (file: File | null, itemId: string): Promise<string> => {
     if (!user) throw new Error('המשתמש אינו מחובר');
     
     try {
-      // מציאת התמונה הקיימת
-      const existingItem = items.find(item => item.id === itemId);
-      const oldImageUrl = existingItem?.imageUrl;
+      // קבלת התמונה הקיימת ישירות מ-Firestore
+      const itemRef = doc(db, 'items', itemId);
+      const itemDoc = await getDoc(itemRef);
+      const oldImageUrl = itemDoc.data()?.imageUrl;
 
       if (file === null) {
         // מחיקת תמונה
@@ -809,23 +835,20 @@ export default function ShoppingList() {
       console.error('שגיאה בהעלאת/מחיקת תמונה:', error);
       throw error;
     }
-  };
+  }, [user]);
 
   // חישוב סטטיסטיקות קניות - עם memoization לביצועים
+  // נחשב על בסיס ספירת סטטוסים ולא על items עצמו
+  const itemsInCart = inCartCount;
+  const itemsPending = pendingCount;
+  const itemsMissing = useMemo(() => items.filter(item => item.status === 'missing').length, [items]);
+  const itemsPartial = useMemo(() => items.filter(item => item.status === 'partial').length, [items]);
+  const itemsPurchased = useMemo(() => items.filter(item => item.status === 'purchased').length, [items]);
+  const activeItemsCount = useMemo(() => items.filter(item => item.status !== 'purchased').length, [items]);
+  
   const stats = useMemo(() => {
-
-    
-    // פריטים פעילים הם אלה שלא במצב purchased
-    const activeItems = items.filter(item => item.status !== 'purchased');
-    const totalItems = activeItems.length;
-    
-    const itemsInCart = activeItems.filter(item => item.status === 'inCart').length;
-    const itemsMissing = activeItems.filter(item => item.status === 'missing').length;
-    const itemsPartial = activeItems.filter(item => item.status === 'partial').length;
-    const itemsPending = activeItems.filter(item => item.status === 'pending').length;
-    
-    // כמות פריטים שנקנו - נשמור לסטטיסטיקות אבל לא נציג ברשימה הפעילה
-    const itemsPurchased = items.filter(item => item.status === 'purchased').length;
+    const totalItems = activeItemsCount;
+    const progress = totalItems > 0 ? ((itemsInCart + itemsMissing + itemsPartial) / totalItems) * 100 : 0;
     
     return {
       totalItems,
@@ -834,9 +857,9 @@ export default function ShoppingList() {
       itemsPartial,
       itemsPending,
       itemsPurchased,
-      progress: totalItems > 0 ? ((itemsInCart + itemsMissing + itemsPartial) / totalItems) * 100 : 0
+      progress
     };
-  }, [items]);
+  }, [activeItemsCount, itemsInCart, itemsMissing, itemsPartial, itemsPending, itemsPurchased]);
 
   // חישוב נתונים לגרף פס - עם memoization לביצועים
   const barChartData = useMemo(() => {
@@ -1005,7 +1028,7 @@ export default function ShoppingList() {
   // המשתמש יכול להתחיל קניות ואז להוסיף פריטים לעגלה בזמן הקנייה
 
   // פונקציה לעריכת שם המוצר
-  const handleEditName = async (id: string, newName: string) => {
+  const handleEditName = useCallback(async (id: string, newName: string) => {
     if (!user) {
       openAuthModal('edit');
       return;
@@ -1026,15 +1049,17 @@ export default function ShoppingList() {
       });
 
       // Re-categorize in the background (don't wait) - תמיד מסווג מחדש כשמשנים שם
-      const updatedItem = items.find(i => i.id === id);
-      if (updatedItem) {
-        ensureItemHasCategory({ ...updatedItem, name: newName.trim() } as Item, true);
+      const itemDocRef = doc(db, 'items', id);
+      const itemSnapshot = await getDoc(itemDocRef);
+      if (itemSnapshot.exists()) {
+        const itemData = itemSnapshot.data();
+        ensureItemHasCategory({ ...itemData, id, name: newName.trim() } as Item, true);
       }
     } catch (error) {
       console.error('Error updating item name:', error);
       alert('שגיאה בעדכון שם המוצר');
     }
-  };
+  }, [user, openAuthModal, ensureItemHasCategory]);
 
   // טיפול בפריטים שנקנו במלואם
   const handleProcessInCartItems = async (itemsInCart: Item[]) => {
@@ -1180,13 +1205,13 @@ export default function ShoppingList() {
         activeItems={items.filter(item => item.status === 'pending' || item.status === 'missing')}
       />
 
-      {/* Shopping mode toggle - Visible only if there are pending items */}
-      {items.some(item => item.status === 'pending') && (
+      {/* Shopping mode toggle - Visible if there are pending items OR if shopping is active with items in cart */}
+      {(items.some(item => item.status === 'pending') || (isShoppingActive && activeShoppingCount > 0)) && (
         <div className="mb-4">
           <button
             onClick={() => {
               // אם יש פריטים מסומנים במצב קניות, סיום קניות
-              if (isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')) {
+              if (isShoppingActive && activeShoppingCount > 0) {
                 handleFinishShopping();
               } else {
                 // אחרת, הפעל/בטל מצב קניות
@@ -1194,14 +1219,14 @@ export default function ShoppingList() {
               }
             }}
             className={`w-full py-2 px-4 rounded-md text-white font-medium shadow transition-colors ${
-              isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing') 
+              isShoppingActive && activeShoppingCount > 0
                 ? 'bg-green-600 hover:bg-green-700' 
                 : isShoppingActive 
                   ? 'bg-yellow-500 hover:bg-yellow-600' 
                   : 'bg-blue-500 hover:bg-blue-600'
             }`}
           >
-            {isShoppingActive && items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing')
+            {isShoppingActive && activeShoppingCount > 0
               ? 'סיום קניות'
               : isShoppingActive 
                 ? 'סגור מצב קניות' 
@@ -1302,9 +1327,7 @@ export default function ShoppingList() {
                       onEditQuantity={handleEditQuantity}
                       onToggleStatus={handleToggleStatus}
                       onUploadImage={handleUploadImage}
-                      onChangeQuantity={async (id: string, newQuantity: number) => {
-                        await handleSaveQuantity(id, newQuantity);
-                      }}
+                      onChangeQuantity={handleSaveQuantity}
                       onEditName={handleEditName}
                       household={selectedHousehold}
                     />
