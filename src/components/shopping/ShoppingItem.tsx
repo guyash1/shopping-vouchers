@@ -79,7 +79,7 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
   };
 
   return (
-    <div className={`grid grid-cols-[56px_1fr_auto_auto] gap-3 p-3 rounded-lg shadow ${getItemBackgroundColor(item.status)} relative border-b border-gray-100 items-start border-r-4 ${userColor.border}`}>
+    <div className={`grid grid-cols-[56px_1fr_auto_auto] gap-3 p-3 sm:p-4 rounded-2xl shadow-lg hover:shadow-2xl transition-all ${getItemBackgroundColor(item.status)} relative border-b border-gray-100 items-start border-r-4 ${userColor.border} animate-fade-in`}>
       {/* תמונת המוצר - עמודה קבועה */}
       <div className="w-14 h-14">
         {item.imageUrl ? (
@@ -87,12 +87,12 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
             <img 
               src={item.imageUrl} 
               alt={item.name} 
-              className="w-full h-full object-cover rounded cursor-pointer transition-transform duration-200 group-hover:scale-105" 
+              className="w-full h-full object-cover rounded-xl cursor-pointer transition-transform duration-200 group-hover:scale-110 border-2 border-blue-200 shadow-md" 
               onClick={() => setIsImageModalOpen(true)}
             />
           </div>
         ) : (
-          <div className="w-14 h-14 flex items-center justify-center border rounded border-gray-200 bg-gray-50">
+          <div className="w-14 h-14 flex items-center justify-center border-2 border-dashed rounded-xl border-blue-300 bg-blue-50 hover:bg-blue-100 transition-all">
             {isUploading ? (
               <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
             ) : (
@@ -145,48 +145,60 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
           <div className="flex flex-col items-center">
             <button
               onClick={() => handleStatusToggle('inCart')}
-              className={`p-1.5 rounded-full hover:bg-green-100 ${
-                item.status === 'inCart' ? 'bg-green-100' : ''
+              className={`p-2 rounded-xl transition-all shadow-sm hover:shadow-md ${
+                item.status === 'inCart' 
+                  ? 'bg-gradient-to-br from-green-500 to-green-600 text-white scale-110' 
+                  : 'bg-gray-100 hover:bg-green-100'
               }`}
               aria-label="סמן כנמצא בעגלה"
               title="בעגלה"
             >
               <ShoppingCart className={`w-4 h-4 ${
-                item.status === 'inCart' ? 'text-green-500' : 'text-gray-400'
+                item.status === 'inCart' ? 'text-white' : 'text-gray-400'
               }`} aria-hidden="true" />
             </button>
-            <span className="text-[10px] text-gray-500 mt-1 leading-none">בעגלה</span>
+            <span className={`text-[10px] mt-1 leading-none font-medium ${
+              item.status === 'inCart' ? 'text-green-600' : 'text-gray-500'
+            }`}>בעגלה</span>
           </div>
           
           <div className="flex flex-col items-center">
             <button
               onClick={() => handleStatusToggle('partial')}
-              className={`p-1.5 rounded-full hover:bg-yellow-100 ${
-                item.status === 'partial' ? 'bg-yellow-100' : ''
+              className={`p-2 rounded-xl transition-all shadow-sm hover:shadow-md ${
+                item.status === 'partial' 
+                  ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white scale-110' 
+                  : 'bg-gray-100 hover:bg-yellow-100'
               }`}
               aria-label="סמן כנלקח חלקית"
             >
               <MinusCircle className={`w-4 h-4 ${
-                item.status === 'partial' ? 'text-yellow-500' : 'text-gray-400'
+                item.status === 'partial' ? 'text-white' : 'text-gray-400'
               }`} />
             </button>
-            <span className="text-[10px] text-gray-500 mt-1 leading-none">חלקי</span>
+            <span className={`text-[10px] mt-1 leading-none font-medium ${
+              item.status === 'partial' ? 'text-yellow-600' : 'text-gray-500'
+            }`}>חלקי</span>
           </div>
           
           <div className="flex flex-col items-center">
             <button
               onClick={() => handleStatusToggle('missing')}
-              className={`p-1.5 rounded-full hover:bg-red-100 ${
-                item.status === 'missing' ? 'bg-red-100' : ''
+              className={`p-2 rounded-xl transition-all shadow-sm hover:shadow-md ${
+                item.status === 'missing' 
+                  ? 'bg-gradient-to-br from-red-500 to-red-600 text-white scale-110' 
+                  : 'bg-gray-100 hover:bg-red-100'
               }`}
               aria-label="סמן כחסר במלאי"
               title="חסר"
             >
               <AlertCircle className={`w-4 h-4 ${
-                item.status === 'missing' ? 'text-red-500' : 'text-gray-400'
+                item.status === 'missing' ? 'text-white' : 'text-gray-400'
               }`} aria-hidden="true" />
             </button>
-            <span className="text-[10px] text-gray-500 mt-1 leading-none">חסר</span>
+            <span className={`text-[10px] mt-1 leading-none font-medium ${
+              item.status === 'missing' ? 'text-red-600' : 'text-gray-500'
+            }`}>חסר</span>
           </div>
         </div>
       </div>
@@ -244,12 +256,12 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
       <div className="flex flex-col items-center">
         <button
           onClick={() => onDelete(item.id)}
-          className="p-2 rounded-full hover:bg-red-50"
+          className="p-2 rounded-xl bg-red-100 hover:bg-gradient-to-br hover:from-red-500 hover:to-red-600 text-red-600 hover:text-white transition-all shadow-sm hover:shadow-md hover:scale-110"
           aria-label="מחק פריט"
         >
-          <X className="w-5 h-5 text-red-500" />
+          <X className="w-5 h-5" />
         </button>
-        <span className="text-xs text-gray-600 mt-1 leading-none text-center">מחק</span>
+        <span className="text-[10px] text-gray-600 mt-1 leading-none text-center font-medium">מחק</span>
       </div>
       
       {/* מודל תמונה מוגדלת - מודרני ו-responsive */}
@@ -376,15 +388,41 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
 }); 
 
 // הוספת סגנון אנימציה באמצעות CSS
-const styleElement = document.createElement('style');
-styleElement.textContent = `
-  @keyframes scale-up {
-    0% { transform: scale(0.8); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  
-  .animate-scale-up {
-    animation: scale-up 0.2s ease-out forwards;
-  }
-`;
-document.head.appendChild(styleElement); 
+if (typeof document !== 'undefined' && !document.getElementById('shopping-item-animations')) {
+  const styleElement = document.createElement('style');
+  styleElement.id = 'shopping-item-animations';
+  styleElement.textContent = `
+    @keyframes scale-up {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(0.625rem);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .animate-scale-up {
+      animation: scale-up 0.2s ease-out forwards;
+    }
+    
+    .animate-fade-in {
+      animation: fade-in 0.6s ease-out forwards;
+    }
+    
+    @media (prefers-reduced-motion: reduce) {
+      .animate-fade-in {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+  `;
+  document.head.appendChild(styleElement);
+} 

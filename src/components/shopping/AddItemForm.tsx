@@ -240,7 +240,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-4 mb-4">
+    <form onSubmit={handleSubmit} className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg p-4 sm:p-5 mb-4 sm:mb-6 border border-gray-100 animate-fade-in">
       <div className="flex gap-2 mb-3 relative">
         <div className="flex-1 relative">
           <input
@@ -252,7 +252,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             placeholder="הוספת פריט חדש..."
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+            className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm hover:shadow-md"
             dir="rtl"
             autoComplete="off"
           />
@@ -261,22 +261,22 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
           {showDropdown && filteredItems.length > 0 && (
             <div
               ref={dropdownRef}
-              className="absolute z-20 w-full bg-white mt-1 rounded-lg shadow-lg max-h-60 overflow-auto border border-gray-200"
+              className="absolute z-20 w-full bg-white mt-2 rounded-xl shadow-2xl max-h-60 overflow-auto border-2 border-blue-200 animate-slide-down"
               onClick={handleDropdownClick}
               onTouchStart={(e) => {
                 // למובייל - למנוע בלור שסוגר את הדרופדאון
                 e.preventDefault();
               }}
             >
-              <div className="py-1 px-2 bg-gray-50 text-xs text-gray-500 border-b border-gray-200">
+              <div className="py-2 px-3 bg-gradient-to-r from-blue-50 to-indigo-50 text-xs font-semibold text-blue-700 border-b border-blue-200">
                 מוצרים שקנית בעבר
               </div>
               {filteredItems.map((item, index) => (
                 <button
                   key={item.name}
                   type="button" // חשוב לציין שזה לא כפתור שליחה
-                  className={`w-full text-right px-3 py-2 hover:bg-blue-50 flex items-center justify-between ${
-                    selectedIndex === index ? 'bg-blue-50' : ''
+                  className={`w-full text-right px-3 py-2.5 hover:bg-blue-50 flex items-center justify-between transition-all ${
+                    selectedIndex === index ? 'bg-blue-100' : ''
                   }`}
                   onClick={(e) => {
                     e.preventDefault(); // למניעת שליחת הטופס
@@ -290,13 +290,13 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
                   onMouseEnter={() => setSelectedIndex(index)}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-700">{item.name}</span>
+                    <span className="font-medium text-gray-800">{item.name}</span>
                   </div>
                   {item.imageUrl && (
                     <img
                       src={item.imageUrl}
                       alt={item.name}
-                      className="w-6 h-6 object-cover rounded"
+                      className="w-7 h-7 object-cover rounded-lg border border-gray-200"
                     />
                   )}
                 </button>
@@ -310,17 +310,17 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
           value={quantity}
           onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
           min="1"
-          className="w-16 px-2 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+          className="w-16 sm:w-20 px-2 py-2 sm:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold shadow-sm hover:shadow-md transition-all"
           aria-label="כמות"
         />
         <button
           type="submit"
           disabled={loading || validatingImage || !inputValue.trim()}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium shadow-sm hover:shadow transition-all min-w-[44px]"
+          className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 sm:px-5 py-2 sm:py-3 rounded-xl hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-bold shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 min-w-[44px]"
           aria-label="הוספת פריט חדש לרשימה"
           title="הוסף פריט חדש לרשימה"
         >
-          <Plus className="w-5 h-5 sm:hidden" />
+          <Plus className="w-5 h-5 sm:w-6 sm:h-6 sm:ml-1" />
           <span className="hidden sm:inline">חדש</span>
         </button>
       </div>
@@ -328,12 +328,12 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {validatingImage ? (
-            <div className="flex items-center gap-1 text-blue-500 text-sm">
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+            <div className="flex items-center gap-1.5 text-blue-600 text-sm font-medium">
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
               <span>מעלה תמונה...</span>
             </div>
           ) : (
-            <label className="flex items-center gap-1 cursor-pointer text-blue-500 hover:text-blue-600 text-sm">
+            <label className="flex items-center gap-1.5 cursor-pointer text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -350,8 +350,8 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
           )}
           
           {imagePreview && !validatingImage && (
-            <div className="flex items-center gap-1">
-              <div className="w-6 h-6 relative overflow-hidden rounded">
+            <div className="flex items-center gap-1.5">
+              <div className="w-7 h-7 relative overflow-hidden rounded-lg border-2 border-blue-200 shadow-sm">
                 <img 
                   src={imagePreview} 
                   alt="תצוגה מקדימה" 
@@ -361,7 +361,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
               <button
                 type="button"
                 onClick={handleClearImage}
-                className="text-red-500 hover:text-red-600 text-xs"
+                className="text-red-500 hover:text-red-600 text-xs font-medium transition-colors"
               >
                 הסר
               </button>
@@ -372,12 +372,51 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
         <button
           type="button"
           onClick={onOpenHistoryModal}
-          className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600"
+          className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
         >
           <History className="w-4 h-4" />
           <span>היסטוריית מוצרים</span>
         </button>
       </div>
+      
+      <style>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes slide-down {
+          from {
+            opacity: 0;
+            transform: translateY(-15px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.4s ease-out;
+        }
+
+        .animate-slide-down {
+          animation: slide-down 0.3s ease-out;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .animate-fade-in,
+          .animate-slide-down {
+            animation: none;
+          }
+        }
+      `}</style>
     </form>
   );
 }; 

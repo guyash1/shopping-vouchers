@@ -459,12 +459,12 @@ export default function Vouchers() {
             <div className="p-4 max-w-3xl mx-auto pb-24">
             {/* אזור חיפוש וכפתור הוספה - מופיע רק אם יש שוברים */}
             {vouchers.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm p-4 mb-4 max-w-xl mx-auto">
+                <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg p-4 sm:p-5 mb-4 sm:mb-6 max-w-xl mx-auto border border-blue-100/50 animate-slide-down">
                     {/* שורה 1: כפתורים ופעולות */}
                     <div className="flex items-center gap-2 mb-3">
                         <button
                             onClick={() => setIsAddModalOpen(true)}
-                            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium text-sm whitespace-nowrap"
+                            className="flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95 font-medium text-sm whitespace-nowrap"
                             aria-label="הוספת שובר חדש"
                         >
                             <Plus className="w-4 h-4" />
@@ -476,7 +476,7 @@ export default function Vouchers() {
                                 placeholder="חפש..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pr-3 pl-9 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
+                                className="w-full pr-3 pl-9 py-2 sm:py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm bg-white shadow-sm"
                                 dir="rtl"
                             />
                             {searchTerm ? (
@@ -491,10 +491,10 @@ export default function Vouchers() {
                             )}
                         </div>
                         <button
-                            className={`p-2 rounded-lg border transition-colors ${
+                            className={`p-2 sm:p-2.5 rounded-xl border-2 transition-all shadow-sm ${
                                 showFilters || selectedCategory !== 'all' || expiryFilter !== 'all'
-                                    ? 'bg-blue-50 border-blue-300' 
-                                    : 'border-gray-300 hover:bg-gray-50'
+                                    ? 'bg-blue-100 border-blue-400 shadow-md' 
+                                    : 'border-gray-300 hover:bg-gray-50 hover:border-gray-400'
                             }`}
                             onClick={() => setShowFilters(!showFilters)}
                         >
@@ -503,26 +503,26 @@ export default function Vouchers() {
                     </div>
                     
                     {/* שורה 2: מיון מהיר */}
-                    <div className="flex items-center gap-3 text-sm">
-                        <span className="text-gray-600 font-medium">מיון לפי</span>
-                        <div className="flex gap-2">
-                            <div className="relative dropdown-container">
+                    <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+                        <span className="text-gray-700 font-semibold">מיון לפי</span>
+                        <div className="flex gap-2 flex-1">
+                            <div className="relative dropdown-container flex-1 sm:flex-initial">
                                 <button
-                                    className="flex items-center justify-between px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white hover:bg-gray-50 transition-colors min-w-[130px]"
+                                    className="flex items-center justify-between px-3 py-1.5 sm:py-2 border-2 border-gray-300 rounded-xl text-xs sm:text-sm bg-white hover:bg-blue-50 hover:border-blue-400 transition-all shadow-sm min-w-0 sm:min-w-[130px] w-full sm:w-auto"
                                     onClick={() => toggleDropdown('sort-main')}
                                 >
-                                    <span>
+                                    <span className="truncate">
                                         {sortBy === 'date' && 'תאריך הוספה'}
                                         {sortBy === 'expiry' && 'תאריך תפוגה'}
                                         {sortBy === 'amount' && 'סכום'}
                                     </span>
-                                    <ChevronDown className="w-4 h-4 mr-2" />
+                                    <ChevronDown className="w-4 h-4 mr-2 flex-shrink-0" />
                                 </button>
                                 
                                 {activeDropdown === 'sort-main' && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-gray-300 rounded-xl shadow-xl z-10 overflow-hidden">
                                         <button 
-                                            className="w-full text-right px-3 py-2 text-sm hover:bg-gray-100 rounded-t-lg"
+                                            className="w-full text-right px-3 py-2 text-xs sm:text-sm hover:bg-blue-50 transition-colors"
                                             onClick={() => {
                                                 setSortBy('date');
                                                 closeAllDropdowns();
@@ -531,7 +531,7 @@ export default function Vouchers() {
                                             תאריך הוספה
                                         </button>
                                         <button 
-                                            className="w-full text-right px-3 py-2 text-sm hover:bg-gray-100"
+                                            className="w-full text-right px-3 py-2 text-xs sm:text-sm hover:bg-blue-50 transition-colors border-t border-gray-200"
                                             onClick={() => {
                                                 setSortBy('expiry');
                                                 closeAllDropdowns();
@@ -540,7 +540,7 @@ export default function Vouchers() {
                                             תאריך תפוגה
                                         </button>
                                         <button 
-                                            className="w-full text-right px-3 py-2 text-sm hover:bg-gray-100 rounded-b-lg"
+                                            className="w-full text-right px-3 py-2 text-xs sm:text-sm hover:bg-blue-50 transition-colors border-t border-gray-200"
                                             onClick={() => {
                                                 setSortBy('amount');
                                                 closeAllDropdowns();
@@ -553,7 +553,7 @@ export default function Vouchers() {
                             </div>
                             
                             <button
-                                className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white hover:bg-gray-50 transition-colors"
+                                className="flex items-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 border-2 border-gray-300 rounded-xl text-xs sm:text-sm bg-white hover:bg-blue-50 hover:border-blue-400 transition-all shadow-sm whitespace-nowrap"
                                 onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
                             >
                                 {sortBy === 'amount' ? 
@@ -611,8 +611,8 @@ export default function Vouchers() {
                                         <ChevronDown className="w-4 h-4" />
                                     </button>
                                     
-                                    {activeDropdown === 'expiry' && (
-                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                {activeDropdown === 'expiry' && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                                             <button 
                                                 className="w-full text-right px-3 py-2 text-sm hover:bg-gray-100"
                                                 onClick={() => {
@@ -695,31 +695,31 @@ export default function Vouchers() {
                         </div>
                         ) : (
                             // No vouchers at all - Beautiful empty state
-                            <>
-                                <div className="w-24 h-24 mx-auto mb-6 bg-blue-50 rounded-full flex items-center justify-center">
-                                    <svg className="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="animate-fade-in">
+                                <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full flex items-center justify-center shadow-lg">
+                                    <svg className="w-10 h-10 sm:w-12 sm:h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-3">אין עדיין שוברים</h3>
-                                <p className="text-gray-600 mb-6 leading-relaxed">
+                                <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3">אין עדיין שוברים</h3>
+                                <p className="text-sm sm:text-base text-gray-600 mb-6 leading-relaxed px-4">
                                     התחילו לנהל את השוברים שלכם במקום אחד<br />
                                     ותדאגו שאף שובר לא יפוג בטעות!
                                 </p>
                                 <button
                                     onClick={() => setIsAddModalOpen(true)}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all font-semibold shadow-lg shadow-blue-500/30"
+                                    className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all font-bold shadow-2xl hover:shadow-3xl hover:scale-105 active:scale-95"
                                 >
                                     <Plus className="w-5 h-5" />
                                     <span>הוספת שובר ראשון</span>
                                 </button>
-                                <div className="bg-blue-50 rounded-lg p-4 mt-6 max-w-sm mx-auto">
-                                    <p className="text-sm text-blue-800 font-medium mb-2">💡 טיפ:</p>
-                                    <p className="text-sm text-blue-700">
+                                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 sm:p-5 mt-6 max-w-sm mx-auto shadow-lg border border-blue-200">
+                                    <p className="text-sm font-bold text-blue-900 mb-2">💡 טיפ:</p>
+                                    <p className="text-sm text-blue-800">
                                         צלמו או העלו תמונה של השובר כדי לגשת אליו בקלות בקופה
                                     </p>
                                 </div>
-                            </>
+                            </div>
                         )}
                 </div>
             ) : (
@@ -798,6 +798,47 @@ export default function Vouchers() {
 
             {/* הטאב בר הישן מוסר - משתמשים בBottomNavbar מה-App.tsx */}
         </div>
+
+        <style>{`
+            @keyframes fade-in {
+                from {
+                    opacity: 0;
+                    transform: translateY(0.625rem);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            @keyframes slide-down {
+                from {
+                    opacity: 0;
+                    transform: translateY(-1.25rem);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            .animate-fade-in {
+                animation: fade-in 0.6s ease-out forwards;
+            }
+            
+            .animate-slide-down {
+                animation: slide-down 0.7s ease-out forwards;
+            }
+            
+            @media (prefers-reduced-motion: reduce) {
+                .animate-fade-in,
+                .animate-slide-down {
+                    animation: none;
+                    opacity: 1;
+                    transform: none;
+                }
+            }
+        `}</style>
         </>
     );
 } 

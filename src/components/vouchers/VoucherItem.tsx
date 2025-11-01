@@ -290,13 +290,13 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
   }
 
   return (
-    <div className={`border rounded-xl p-4 ${getBorderColor()} ${getBackgroundColor()} ${voucher.isUsed ? 'opacity-70' : ''} shadow-sm hover:shadow-md transition-shadow`}>
-      <div className="flex gap-3">
+    <div className={`border-2 rounded-2xl p-4 sm:p-5 ${getBorderColor()} ${getBackgroundColor()} ${voucher.isUsed ? 'opacity-70' : ''} shadow-lg hover:shadow-2xl transition-all hover:scale-[1.02] animate-fade-in`}>
+      <div className="flex gap-3 sm:gap-4">
         {/* תוכן השובר */}
         <div className="flex-1">
           <div className="flex justify-between mb-3">
             <div>
-              <h3 className="font-bold text-xl text-gray-800">{voucher.storeName}</h3>
+              <h3 className="font-bold text-xl sm:text-2xl text-gray-900">{voucher.storeName}</h3>
               
               {/* תג של מי הוסיף */}
               <div className="flex items-center gap-1 mt-1 mb-1">
@@ -323,27 +323,27 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
               <div className="flex flex-col items-center">
                 <button
                   onClick={onToggleUsed}
-                  className={`p-2 rounded-full ${
+                  className={`p-2 sm:p-2.5 rounded-xl shadow-md ${
                     voucher.isUsed 
-                      ? 'bg-gray-200 text-gray-600' 
-                      : 'bg-green-100 text-green-600 hover:bg-green-200'
-                  } transition-colors`}
+                      ? 'bg-gray-200 text-gray-600 hover:bg-gray-300' 
+                      : 'bg-gradient-to-br from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 hover:shadow-lg'
+                  } transition-all hover:scale-110 active:scale-95`}
                   title={voucher.isUsed ? 'שחזר' : 'סמן כמומש'}
                 >
                   <CheckCircle className="w-5 h-5" />
                 </button>
-                <span className="text-xs mt-1">{voucher.isUsed ? 'שחזר' : 'מומש'}</span>
+                <span className="text-xs mt-1 font-medium">{voucher.isUsed ? 'שחזר' : 'מומש'}</span>
               </div>
               <div className="flex flex-col items-center">
                 <button
                   onClick={handleSafeDelete}
-                  className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors"
+                  className="p-2 sm:p-2.5 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all shadow-md hover:shadow-lg hover:scale-110 active:scale-95"
                   title="מחיקת שובר"
                   disabled={isDeleting}
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
-                <span className="text-xs mt-1">מחיקה</span>
+                <span className="text-xs mt-1 font-medium">מחיקה</span>
               </div>
             </div>
           </div>
@@ -351,39 +351,39 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
           {/* הצגת מידע על שובר נצבר */}
           {voucher.isPartial && voucher.remainingAmount !== undefined && (
             <div className="mb-3">
-              <div className="flex justify-between items-center text-sm mb-1">
-                <span className="font-medium">סכום נותר: ₪{typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount.toFixed(2) : '0.00'}</span>
-                <span className="text-xs text-gray-500">
+              <div className="flex justify-between items-center text-sm mb-2">
+                <span className="font-bold text-blue-900">סכום נותר: ₪{typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount.toFixed(2) : '0.00'}</span>
+                <span className="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2.5 py-1 rounded-full">
                   {getUsagePercentage().toFixed(0)}% נוצל
                 </span>
               </div>
               
               {/* שורת התקדמות */}
-              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner mb-3">
                 <div 
-                  className="h-full bg-blue-500 rounded-full"
+                  className="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 rounded-full transition-all duration-500"
                   style={{ width: `${getUsagePercentage()}%` }}
                 ></div>
               </div>
               
-              {/* כפתור עדכון סכום - רק אם השובר לא מומש */}
+              {/* כפתורי עדכון - רק אם השובר לא מומש */}
               {!voucher.isUsed && onUpdateRemainingAmount && (
-                <button
-                  onClick={openRemainingAmountEditor}
-                  className="mt-2 text-xs flex items-center px-2 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
-                >
-                  <Edit className="w-3 h-3 ml-1" />
-                  שימוש בסכום
-                </button>
-              )}
-              {!voucher.isUsed && onUpdateRemainingAmount && (
-                <button
-                  onClick={openEditRemainingEditor}
-                  className="mt-2 mr-2 rtl:ml-2 rtl:mr-0 text-xs flex items-center px-2 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-full transition-colors"
-                >
-                  <Edit className="w-3 h-3 ml-1" />
-                  עריכת יתרה
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={openRemainingAmountEditor}
+                    className="flex-1 text-sm flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition-all shadow-sm hover:shadow-md font-medium"
+                  >
+                    <Edit className="w-4 h-4" />
+                    שימוש בסכום
+                  </button>
+                  <button
+                    onClick={openEditRemainingEditor}
+                    className="flex-1 text-sm flex items-center justify-center gap-1.5 px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-xl transition-all shadow-sm hover:shadow-md font-medium"
+                  >
+                    <Edit className="w-4 h-4" />
+                    עריכת יתרה
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -470,40 +470,40 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
 
         {/* תמונת השובר - עם שיפור הגדלה */}
         {voucher.imageUrl ? (
-          <div className="relative w-20 h-20 shrink-0">
+          <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0">
             <div 
               onClick={() => onViewImage && onViewImage(voucher)} 
-              className="group relative w-full h-full overflow-hidden rounded-lg cursor-pointer"
+              className="group relative w-full h-full overflow-hidden rounded-xl cursor-pointer shadow-md hover:shadow-xl transition-all border-2 border-blue-200 hover:border-blue-400"
             >
               <img
                 src={voucher.imageUrl}
                 alt={voucher.storeName}
-                className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                className="w-full h-full object-cover transition-transform group-hover:scale-125"
               />
-              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                <span className="text-white text-xs font-bold">הגדל</span>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                <span className="text-white text-sm font-bold drop-shadow-lg">הגדל</span>
               </div>
             </div>
           </div>
         ) : (
           <button
             onClick={() => setShowImageOptions(true)}
-            className="w-20 h-20 shrink-0 flex flex-col items-center justify-center gap-1 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+            className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex flex-col items-center justify-center gap-1 border-2 border-dashed border-blue-300 rounded-xl text-blue-600 hover:bg-blue-50 hover:border-blue-500 transition-all shadow-sm hover:shadow-md"
           >
-            <Upload className="w-4 h-4" />
-            <span className="text-xs">הוספת תמונה</span>
+            <Upload className="w-5 h-5" />
+            <span className="text-xs font-medium">הוספת תמונה</span>
           </button>
         )}
       </div>
 
       {/* תפריט אפשרויות תמונה */}
       {showImageOptions && (
-        <div className="mt-2 p-3 bg-gray-50 rounded-lg shadow-sm">
-          <div className="flex justify-between items-center mb-2">
-            <h4 className="text-sm font-medium">אפשרויות תמונה</h4>
+        <div className="mt-3 p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl shadow-lg border border-gray-200 animate-slide-down">
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-sm font-bold text-gray-900">אפשרויות תמונה</h4>
             <button
               onClick={() => setShowImageOptions(false)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1 rounded-lg transition-all"
             >
               <X className="w-4 h-4" />
             </button>
@@ -511,9 +511,9 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
           <div className="flex gap-2">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex-1 py-1.5 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center gap-1 text-sm hover:bg-blue-200 transition-colors"
+              className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl flex items-center justify-center gap-2 text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95"
             >
-              <Upload className="w-3 h-3" />
+              <Upload className="w-4 h-4" />
               <span>העלה מהמכשיר</span>
             </button>
             <input
@@ -529,12 +529,12 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
 
       {/* תפריט בחירת תאריך תפוגה */}
       {showExpiryDatePicker && (
-        <div className="mt-2 p-3 bg-gray-50 rounded-lg shadow-sm">
-          <div className="flex justify-between items-center mb-2">
-            <h4 className="text-sm font-medium">{isEditing ? 'עריכת תאריך תפוגה' : 'הוספת תאריך תפוגה'}</h4>
+        <div className="mt-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-lg border border-blue-200 animate-slide-down">
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-sm font-bold text-gray-900">{isEditing ? 'עריכת תאריך תפוגה' : 'הוספת תאריך תפוגה'}</h4>
             <button
               onClick={() => setShowExpiryDatePicker(false)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1 rounded-lg transition-all"
             >
               <X className="w-4 h-4" />
             </button>
@@ -544,19 +544,19 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
               type="date"
               value={newExpiryDate}
               onChange={(e) => setNewExpiryDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              className="w-full px-3 py-2.5 border-2 border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
               dir="rtl"
             />
             <div className="flex justify-end gap-2 mt-1">
               <button
                 onClick={() => setShowExpiryDatePicker(false)}
-                className="py-1.5 px-3 bg-gray-100 text-gray-700 rounded-lg text-sm"
+                className="py-2 px-4 bg-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-300 transition-all"
               >
                 ביטול
               </button>
               <button
                 onClick={handleUpdateExpiryDate}
-                className="py-1.5 px-3 bg-blue-100 text-blue-600 rounded-lg text-sm"
+                className="py-2 px-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg"
               >
                 {isEditing ? 'עדכון' : 'הוספה'}
               </button>
@@ -676,4 +676,38 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
       )}
     </div>
   );
-}; 
+};
+
+// CSS לאנימציות
+const styles = `
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.625rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out forwards;
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+`;
+
+// הוספת ה-styles לראש הדף (רק פעם אחת)
+if (typeof document !== 'undefined' && !document.getElementById('voucher-item-animations')) {
+  const styleSheet = document.createElement('style');
+  styleSheet.id = 'voucher-item-animations';
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
+} 

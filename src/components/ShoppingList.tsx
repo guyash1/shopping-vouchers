@@ -1207,7 +1207,7 @@ export default function ShoppingList() {
 
       {/* Shopping mode toggle - Visible if there are pending items OR if shopping is active with items in cart */}
       {(items.some(item => item.status === 'pending') || (isShoppingActive && activeShoppingCount > 0)) && (
-        <div className="mb-4">
+        <div className="mb-4 sm:mb-6 animate-slide-down">
           <button
             onClick={() => {
               // אם יש פריטים מסומנים במצב קניות, סיום קניות
@@ -1218,12 +1218,12 @@ export default function ShoppingList() {
                 toggleShoppingMode();
               }
             }}
-            className={`w-full py-2 px-4 rounded-md text-white font-medium shadow transition-colors ${
+            className={`w-full py-3 sm:py-4 px-4 sm:px-6 rounded-2xl text-white font-bold shadow-lg hover:shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] ${
               isShoppingActive && activeShoppingCount > 0
-                ? 'bg-green-600 hover:bg-green-700' 
+                ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700' 
                 : isShoppingActive 
-                  ? 'bg-yellow-500 hover:bg-yellow-600' 
-                  : 'bg-blue-500 hover:bg-blue-600'
+                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600' 
+                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
             }`}
           >
             {isShoppingActive && activeShoppingCount > 0
@@ -1238,19 +1238,19 @@ export default function ShoppingList() {
 
       {/* Shopping progress statistics */}
       {isShoppingActive && displayItems.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-4 mb-4">
-          <div className="flex justify-between mb-2">
-            <span className="text-sm text-gray-600">התקדמות קניות:</span>
-            <span className="text-sm font-medium">{Math.round(stats.progress)}%</span>
+        <div className="bg-gradient-to-br from-white via-gray-50 to-blue-50 rounded-2xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-100 animate-fade-in">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm sm:text-base font-bold text-gray-700">התקדמות קניות</span>
+            <span className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{Math.round(stats.progress)}%</span>
           </div>
 
           {stats.totalItems > 0 && (
             <div className="mb-4">
-              <div className="h-3 w-full bg-gray-200 rounded-md overflow-hidden flex">
+              <div className="h-4 sm:h-5 w-full bg-gray-200 rounded-full overflow-hidden flex shadow-inner">
                 {barChartData.map((segment, index) => (
                   <div 
                     key={index} 
-                    className="h-full" 
+                    className="h-full transition-all duration-500" 
                     style={{ 
                       width: `${segment.percentage}%`, 
                       backgroundColor: segment.color 
@@ -1260,11 +1260,11 @@ export default function ShoppingList() {
                 ))}
               </div>
               
-              <div className="flex flex-wrap justify-between text-xs text-gray-500 mt-2">
+              <div className="flex flex-wrap justify-between text-xs text-gray-500 mt-3 gap-1">
                 {barChartData.map((segment, index) => (
                   <div key={index} className="flex items-center gap-1 mt-1">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: segment.color }}></div>
-                    <span>
+                    <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: segment.color }}></div>
+                    <span className="font-medium">
                       {segment.label}: {segment.value}
                     </span>
                   </div>
@@ -1274,22 +1274,22 @@ export default function ShoppingList() {
           )}
 
           {/* מידע מספרי */}
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="flex flex-col">
-              <span className="text-lg font-semibold text-gray-800">{stats.itemsPending}</span>
-              <span className="text-xs text-gray-500">בהמתנה</span>
+          <div className="grid grid-cols-4 gap-2 sm:gap-3 text-center">
+            <div className="flex flex-col bg-white rounded-xl p-2 sm:p-3 shadow-sm hover:shadow-md transition-all">
+              <span className="text-lg sm:text-2xl font-black text-gray-800">{stats.itemsPending}</span>
+              <span className="text-xs font-semibold text-gray-500 mt-1">בהמתנה</span>
             </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-semibold text-green-600">{stats.itemsInCart}</span>
-              <span className="text-xs text-gray-500">בעגלה</span>
+            <div className="flex flex-col bg-green-50 rounded-xl p-2 sm:p-3 shadow-sm hover:shadow-md transition-all">
+              <span className="text-lg sm:text-2xl font-black text-green-600">{stats.itemsInCart}</span>
+              <span className="text-xs font-semibold text-green-600 mt-1">בעגלה</span>
             </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-semibold text-yellow-500">{stats.itemsPartial}</span>
-              <span className="text-xs text-gray-500">חלקי</span>
+            <div className="flex flex-col bg-yellow-50 rounded-xl p-2 sm:p-3 shadow-sm hover:shadow-md transition-all">
+              <span className="text-lg sm:text-2xl font-black text-yellow-500">{stats.itemsPartial}</span>
+              <span className="text-xs font-semibold text-yellow-500 mt-1">חלקי</span>
             </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-semibold text-red-500">{stats.itemsMissing}</span>
-              <span className="text-xs text-gray-500">חסר</span>
+            <div className="flex flex-col bg-red-50 rounded-xl p-2 sm:p-3 shadow-sm hover:shadow-md transition-all">
+              <span className="text-lg sm:text-2xl font-black text-red-500">{stats.itemsMissing}</span>
+              <span className="text-xs font-semibold text-red-500 mt-1">חסר</span>
             </div>
           </div>
         </div>
@@ -1399,6 +1399,45 @@ export default function ShoppingList() {
         onSave={handleSavePartialItems}
         />
       </div>
+      
+      <style>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes slide-down {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.5s ease-out;
+        }
+
+        .animate-slide-down {
+          animation: slide-down 0.4s ease-out;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .animate-fade-in,
+          .animate-slide-down {
+            animation: none;
+          }
+        }
+      `}</style>
     </>
   );
 }
