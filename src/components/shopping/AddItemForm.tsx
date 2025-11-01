@@ -316,12 +316,12 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
         <button
           type="submit"
           disabled={loading || validatingImage || !inputValue.trim()}
-          className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 sm:px-5 py-2 sm:py-3 rounded-xl hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-bold shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 min-w-[44px]"
+          className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 py-2 sm:py-3 rounded-xl hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 font-bold shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95"
           aria-label="הוספת פריט חדש לרשימה"
           title="הוסף פריט חדש לרשימה"
         >
-          <Plus className="w-5 h-5 sm:w-6 sm:h-6 sm:ml-1" />
-          <span className="hidden sm:inline">חדש</span>
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="text-sm sm:text-base">חדש</span>
         </button>
       </div>
       

@@ -1218,7 +1218,7 @@ export default function ShoppingList() {
                 toggleShoppingMode();
               }
             }}
-            className={`px-5 py-2 rounded-lg text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all ${
+            className={`px-6 py-2.5 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all ${
               isShoppingActive && activeShoppingCount > 0
                 ? 'bg-green-600 hover:bg-green-700' 
                 : isShoppingActive 
@@ -1339,10 +1339,10 @@ export default function ShoppingList() {
 
           {/* Finish shopping button */}
           {items.some(item => item.status === 'inCart' || item.status === 'partial' || item.status === 'missing') && (
-            <div className="mt-6">
+            <div className="flex justify-center mt-6">
               <button
                 onClick={handleFinishShopping}
-                className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 font-semibold"
+                className="px-6 py-2.5 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all bg-green-600 hover:bg-green-700"
               >
                 סיום קניות
               </button>
