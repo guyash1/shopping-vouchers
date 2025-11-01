@@ -1205,9 +1205,9 @@ export default function ShoppingList() {
         activeItems={items.filter(item => item.status === 'pending' || item.status === 'missing')}
       />
 
-      {/* Shopping mode toggle - Visible if there are pending items OR if shopping is active with items in cart */}
+      {/* Shopping mode toggle - קטן ומשני */}
       {(items.some(item => item.status === 'pending') || (isShoppingActive && activeShoppingCount > 0)) && (
-        <div className="mb-4 sm:mb-6 animate-slide-down">
+        <div className="flex justify-center mb-3 animate-fade-in">
           <button
             onClick={() => {
               // אם יש פריטים מסומנים במצב קניות, סיום קניות
@@ -1218,12 +1218,12 @@ export default function ShoppingList() {
                 toggleShoppingMode();
               }
             }}
-            className={`w-full py-3 sm:py-4 px-4 sm:px-6 rounded-2xl text-white font-bold shadow-lg hover:shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] ${
+            className={`px-5 py-2 rounded-lg text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all ${
               isShoppingActive && activeShoppingCount > 0
-                ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700' 
+                ? 'bg-green-600 hover:bg-green-700' 
                 : isShoppingActive 
-                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600' 
-                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                  ? 'bg-yellow-500 hover:bg-yellow-600' 
+                  : 'bg-blue-600 hover:bg-blue-700'
             }`}
           >
             {isShoppingActive && activeShoppingCount > 0
@@ -1238,7 +1238,7 @@ export default function ShoppingList() {
 
       {/* Shopping progress statistics */}
       {isShoppingActive && displayItems.length > 0 && (
-        <div className="bg-gradient-to-br from-white via-gray-50 to-blue-50 rounded-2xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-100 animate-fade-in">
+        <div className="bg-gradient-to-br from-white via-gray-50 to-blue-50 rounded-xl shadow-md p-3 sm:p-4 mb-3 border border-gray-100 animate-fade-in">
           <div className="flex justify-between items-center mb-3">
             <span className="text-sm sm:text-base font-bold text-gray-700">התקדמות קניות</span>
             <span className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{Math.round(stats.progress)}%</span>
@@ -1274,22 +1274,22 @@ export default function ShoppingList() {
           )}
 
           {/* מידע מספרי */}
-          <div className="grid grid-cols-4 gap-2 sm:gap-3 text-center">
-            <div className="flex flex-col bg-white rounded-xl p-2 sm:p-3 shadow-sm hover:shadow-md transition-all">
-              <span className="text-lg sm:text-2xl font-black text-gray-800">{stats.itemsPending}</span>
-              <span className="text-xs font-semibold text-gray-500 mt-1">בהמתנה</span>
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="flex flex-col bg-white rounded-lg p-2 shadow-sm hover:shadow-md transition-all">
+              <span className="text-lg sm:text-xl font-black text-gray-800">{stats.itemsPending}</span>
+              <span className="text-xs font-semibold text-gray-500">בהמתנה</span>
             </div>
-            <div className="flex flex-col bg-green-50 rounded-xl p-2 sm:p-3 shadow-sm hover:shadow-md transition-all">
-              <span className="text-lg sm:text-2xl font-black text-green-600">{stats.itemsInCart}</span>
-              <span className="text-xs font-semibold text-green-600 mt-1">בעגלה</span>
+            <div className="flex flex-col bg-green-50 rounded-lg p-2 shadow-sm hover:shadow-md transition-all">
+              <span className="text-lg sm:text-xl font-black text-green-600">{stats.itemsInCart}</span>
+              <span className="text-xs font-semibold text-green-600">בעגלה</span>
             </div>
-            <div className="flex flex-col bg-yellow-50 rounded-xl p-2 sm:p-3 shadow-sm hover:shadow-md transition-all">
-              <span className="text-lg sm:text-2xl font-black text-yellow-500">{stats.itemsPartial}</span>
-              <span className="text-xs font-semibold text-yellow-500 mt-1">חלקי</span>
+            <div className="flex flex-col bg-yellow-50 rounded-lg p-2 shadow-sm hover:shadow-md transition-all">
+              <span className="text-lg sm:text-xl font-black text-yellow-500">{stats.itemsPartial}</span>
+              <span className="text-xs font-semibold text-yellow-500">חלקי</span>
             </div>
-            <div className="flex flex-col bg-red-50 rounded-xl p-2 sm:p-3 shadow-sm hover:shadow-md transition-all">
-              <span className="text-lg sm:text-2xl font-black text-red-500">{stats.itemsMissing}</span>
-              <span className="text-xs font-semibold text-red-500 mt-1">חסר</span>
+            <div className="flex flex-col bg-red-50 rounded-lg p-2 shadow-sm hover:shadow-md transition-all">
+              <span className="text-lg sm:text-xl font-black text-red-500">{stats.itemsMissing}</span>
+              <span className="text-xs font-semibold text-red-500">חסר</span>
             </div>
           </div>
         </div>

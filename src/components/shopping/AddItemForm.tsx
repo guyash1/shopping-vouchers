@@ -240,7 +240,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg p-4 sm:p-5 mb-4 sm:mb-6 border border-gray-100 animate-fade-in">
+    <form onSubmit={handleSubmit} className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-md p-3 sm:p-4 mb-3 border border-gray-100 animate-fade-in">
       <div className="flex gap-2 mb-3 relative">
         <div className="flex-1 relative">
           <input
@@ -328,12 +328,12 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {validatingImage ? (
-            <div className="flex items-center gap-1.5 text-blue-600 text-sm font-medium">
+            <div className="flex items-center gap-1.5 text-blue-600 text-sm font-semibold">
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
               <span>מעלה תמונה...</span>
             </div>
           ) : (
-            <label className="flex items-center gap-1.5 cursor-pointer text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors">
+            <label className="flex items-center gap-1.5 cursor-pointer px-2 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 text-sm font-semibold transition-all">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -351,7 +351,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
           
           {imagePreview && !validatingImage && (
             <div className="flex items-center gap-1.5">
-              <div className="w-7 h-7 relative overflow-hidden rounded-lg border-2 border-blue-200 shadow-sm">
+              <div className="w-8 h-8 relative overflow-hidden rounded-lg border-2 border-blue-300 shadow-sm">
                 <img 
                   src={imagePreview} 
                   alt="תצוגה מקדימה" 
@@ -361,7 +361,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
               <button
                 type="button"
                 onClick={handleClearImage}
-                className="text-red-500 hover:text-red-600 text-xs font-medium transition-colors"
+                className="px-2 py-1 text-red-600 hover:text-white hover:bg-red-600 rounded-lg text-xs font-semibold transition-all"
               >
                 הסר
               </button>
@@ -372,7 +372,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
         <button
           type="button"
           onClick={onOpenHistoryModal}
-          className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+          className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 text-sm font-semibold transition-all"
         >
           <History className="w-4 h-4" />
           <span>היסטוריית מוצרים</span>
