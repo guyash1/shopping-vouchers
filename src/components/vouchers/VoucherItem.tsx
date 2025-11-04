@@ -326,7 +326,7 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
                   className={`p-2 sm:p-2.5 rounded-xl shadow-md ${
                     voucher.isUsed 
                       ? 'bg-gray-200 text-gray-600 hover:bg-gray-300' 
-                      : 'bg-gradient-to-br from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 hover:shadow-lg'
+                      : 'bg-gradient-to-br from-green-400 to-green-500 text-white hover:from-green-500 hover:to-green-600 hover:shadow-lg'
                   } transition-all hover:scale-110 active:scale-95`}
                   title={voucher.isUsed ? 'שחזר' : 'סמן כמומש'}
                 >
@@ -337,7 +337,7 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
               <div className="flex flex-col items-center">
                 <button
                   onClick={handleSafeDelete}
-                  className="p-2 sm:p-2.5 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all shadow-md hover:shadow-lg hover:scale-110 active:scale-95"
+                  className="p-2 sm:p-2.5 bg-gradient-to-br from-red-400 to-red-500 text-white rounded-xl hover:from-red-500 hover:to-red-600 transition-all shadow-md hover:shadow-lg hover:scale-110 active:scale-95"
                   title="מחיקת שובר"
                   disabled={isDeleting}
                 >
@@ -353,7 +353,7 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
             <div className="mb-3">
               <div className="flex justify-between items-center text-sm mb-2">
                 <span className="font-bold text-blue-900">סכום נותר: ₪{typeof voucher.remainingAmount === 'number' ? voucher.remainingAmount.toFixed(2) : '0.00'}</span>
-                <span className="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2.5 py-1 rounded-full">
+                <span className="text-xs font-semibold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full">
                   {getUsagePercentage().toFixed(0)}% נוצל
                 </span>
               </div>
@@ -361,7 +361,7 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
               {/* שורת התקדמות */}
               <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner mb-3">
                 <div 
-                  className="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 rounded-full transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-500"
                   style={{ width: `${getUsagePercentage()}%` }}
                 ></div>
               </div>
@@ -369,20 +369,22 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
               {/* כפתורי עדכון - רק אם השובר לא מומש */}
               {!voucher.isUsed && onUpdateRemainingAmount && (
                 <div className="flex gap-2">
-                  <button
-                    onClick={openRemainingAmountEditor}
-                    className="flex-1 text-sm flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition-all shadow-sm hover:shadow-md font-medium"
-                  >
-                    <Edit className="w-4 h-4" />
-                    שימוש בסכום
-                  </button>
-                  <button
-                    onClick={openEditRemainingEditor}
-                    className="flex-1 text-sm flex items-center justify-center gap-1.5 px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-xl transition-all shadow-sm hover:shadow-md font-medium"
-                  >
-                    <Edit className="w-4 h-4" />
-                    עריכת יתרה
-                  </button>
+                <button
+                  onClick={openRemainingAmountEditor}
+                    className="flex-1 text-xs sm:text-sm flex items-center justify-center gap-1 px-3 py-2 border-2 border-blue-300 text-blue-600 hover:bg-blue-50 rounded-lg transition-all font-semibold"
+                    title="שימוש בסכום משובר"
+                >
+                    <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  שימוש בסכום
+                </button>
+                <button
+                  onClick={openEditRemainingEditor}
+                    className="flex-1 text-xs sm:text-sm flex items-center justify-center gap-1 px-3 py-2 border-2 border-purple-300 text-purple-600 hover:bg-purple-50 rounded-lg transition-all font-semibold"
+                    title="עדכון יתרה ידנית"
+                >
+                    <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  עריכת יתרה
+                </button>
                 </div>
               )}
             </div>
@@ -666,7 +668,7 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
                   await onUpdateRemainingAmount(voucher.id, Number(newVal.toFixed(2)));
                   setShowEditRemainingEditor(false);
                 }}
-                className="py-1.5 px-3 bg-purple-100 text-purple-700 rounded-lg text-sm"
+                className="py-1.5 px-3 bg-blue-100 text-blue-700 rounded-lg text-sm"
               >
                 שמירה
               </button>
@@ -676,7 +678,7 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
       )}
     </div>
   );
-};
+}; 
 
 // CSS לאנימציות
 const styles = `

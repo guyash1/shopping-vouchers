@@ -459,7 +459,7 @@ export default function Vouchers() {
             <div className="p-4 max-w-3xl mx-auto pb-24">
             {/* אזור חיפוש וכפתור הוספה - מופיע רק אם יש שוברים */}
             {vouchers.length > 0 && (
-                <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg p-4 sm:p-5 mb-4 sm:mb-6 max-w-xl mx-auto border border-blue-100/50 animate-slide-down">
+                <div className="relative bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg p-4 sm:p-5 mb-4 sm:mb-6 max-w-xl mx-auto border border-blue-100/50 animate-slide-down z-40">
                     {/* שורה 1: כפתורים ופעולות */}
                     <div className="flex items-center gap-2 mb-3">
                         <button
@@ -506,7 +506,7 @@ export default function Vouchers() {
                     <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
                         <span className="text-gray-700 font-semibold">מיון לפי</span>
                         <div className="flex gap-2 flex-1">
-                            <div className="relative dropdown-container flex-1 sm:flex-initial">
+                            <div className="relative dropdown-container flex-1 sm:flex-initial z-50">
                                 <button
                                     className="flex items-center justify-between px-3 py-1.5 sm:py-2 border-2 border-gray-300 rounded-xl text-xs sm:text-sm bg-white hover:bg-blue-50 hover:border-blue-400 transition-all shadow-sm min-w-0 sm:min-w-[130px] w-full sm:w-auto"
                                     onClick={() => toggleDropdown('sort-main')}
@@ -520,7 +520,7 @@ export default function Vouchers() {
                                 </button>
                                 
                                 {activeDropdown === 'sort-main' && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-gray-300 rounded-xl shadow-xl z-10 overflow-hidden">
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-gray-300 rounded-xl shadow-xl z-[100] overflow-hidden">
                                         <button 
                                             className="w-full text-right px-3 py-2 text-xs sm:text-sm hover:bg-blue-50 transition-colors"
                                             onClick={() => {
