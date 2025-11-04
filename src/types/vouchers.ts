@@ -5,6 +5,7 @@ export interface Voucher {
     expiryDate?: string;
     imageUrl?: string;
     userId: string;
+    householdId?: string;
     createdAt: Date;
     isUsed: boolean;
     category?: string;

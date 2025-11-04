@@ -28,7 +28,7 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
   household
 }) => {
   // קבלת פרטי המשתמש שהוסיף
-  const userColor = getUserColor(item.addedBy);
+  const userColor = getUserColor(item.addedBy, item.householdId);
   const userName = getUserName(item.addedBy, household);
   const userInitials = getInitials(userName);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);

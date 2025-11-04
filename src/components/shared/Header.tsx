@@ -30,13 +30,17 @@ export default function Header({
   useEffect(() => {
     const loadUserProfile = async () => {
       if (user) {
+        // קודם נציג את displayName מיידית
+        setUserDisplayName(user.displayName || 'משתמש');
+        
+        // ואז ננסה לטעון את הפרופיל המלא
         const profile = await userService.getUserProfile(user.uid);
         if (profile) {
           const name = profile.firstName || profile.displayName || user.displayName || 'משתמש';
           setUserDisplayName(name);
-        } else {
-          setUserDisplayName(user.displayName || 'משתמש');
         }
+      } else {
+        setUserDisplayName('');
       }
     };
     loadUserProfile();

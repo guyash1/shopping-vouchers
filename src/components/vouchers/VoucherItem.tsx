@@ -3,6 +3,7 @@ import { Voucher } from '../../types/vouchers';
 import { Calendar, CheckCircle, X, Upload, Trash2, ShoppingCart, Utensils, Droplet, ShoppingBag, Gift, Edit, Plus } from 'lucide-react';
 import { getUserColor, getUserName, getInitials } from '../../utils/userColors';
 import { Household } from '../../types/household';
+import { aiService } from '../../services/ai.service';
 
 // קטגוריות שוברים ואייקונים
 const CATEGORY_ICONS = {
@@ -21,6 +22,10 @@ const CATEGORY_NAMES = {
   fashion: "אופנה",
   general: "כללי"
 };
+
+// קבועים לוולידציה של תמונות
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
 
 interface VoucherItemProps {
   voucher: Voucher;
@@ -44,10 +49,9 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
   household
 }) => {
   // קבלת פרטי המשתמש שהוסיף
-  const userColor = getUserColor(voucher.userId);
+  const userColor = getUserColor(voucher.userId, (voucher as any).householdId);
   const userName = getUserName(voucher.userId, household);
   const userInitials = getInitials(userName);
-  const [showImageOptions, setShowImageOptions] = useState(false);
   const [showExpiryDatePicker, setShowExpiryDatePicker] = useState(false);
   const [showRemainingAmountEditor, setShowRemainingAmountEditor] = useState(false);
   const [newExpiryDate, setNewExpiryDate] = useState<string>('');
@@ -56,6 +60,8 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditRemainingEditor, setShowEditRemainingEditor] = useState(false);
   const [editRemainingInput, setEditRemainingInput] = useState<string>('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [validatingImage, setValidatingImage] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,18 +104,68 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
     return new Date(date).toLocaleDateString('he-IL');
   };
 
-  // טיפול בהעלאת תמונה
+  // טיפול בהעלאת תמונה עם ולידציה
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    try {
-      await onUploadImage(file);
-      setShowImageOptions(false);
-    } catch (error) {
-      console.error('שגיאה בהעלאת תמונה:', error);
-      alert('שגיאה בהעלאת תמונה');
+    // ולידציה בסיסית - סוג קובץ
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      alert('סוג קובץ לא נתמך. רק JPEG, PNG, GIF ו-WEBP מותרים');
+      e.target.value = '';
+      return;
     }
+
+    // ולידציה בסיסית - גודל קובץ
+    if (file.size > MAX_IMAGE_SIZE) {
+      alert('קובץ גדול מדי (מקסימום 3MB). נסה לכווץ את התמונה.');
+      e.target.value = '';
+      return;
+    }
+
+    setValidatingImage(true);
+    
+    // קריאת הקובץ כ-Data URL
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const imageDataUrl = reader.result as string;
+      
+      try {
+        // ולידציה עם AI
+        const validation = await aiService.validateImage(imageDataUrl, 'voucher');
+        
+        if (!validation.isValid) {
+          alert(`❌ התמונה לא מתאימה\n\n${validation.reason}\n\nאנא העלה תמונה של שובר/קופון עם ברקוד או קוד.`);
+          e.target.value = '';
+          setValidatingImage(false);
+          return;
+        }
+
+        // אם עבר ולידציה - מעלים לשרת
+        setValidatingImage(false);
+        setIsUploadingImage(true);
+        
+        await onUploadImage(file);
+        
+      } catch (error) {
+        console.error('שגיאה בוולידציה או העלאת תמונה:', error);
+        // במקרה של שגיאה בוולידציה - מאפשרים העלאה (fail open)
+        setValidatingImage(false);
+        setIsUploadingImage(true);
+        
+        try {
+          await onUploadImage(file);
+        } catch (uploadError) {
+          console.error('שגיאה בהעלאת תמונה:', uploadError);
+          alert('שגיאה בהעלאת תמונה');
+        }
+      } finally {
+        setIsUploadingImage(false);
+        setValidatingImage(false);
+      }
+    };
+    
+    reader.readAsDataURL(file);
   };
 
   // טיפול בעדכון תאריך תפוגה
@@ -149,7 +205,6 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
       setIsDeleting(true);
       // סגירת כל התפריטים לפני המחיקה למניעת בעיות רינדור
       setShowExpiryDatePicker(false);
-      setShowImageOptions(false);
       setShowRemainingAmountEditor(false);
       setIsEditing(false);
       
@@ -489,45 +544,33 @@ export const VoucherItem: React.FC<VoucherItemProps> = ({
           </div>
         ) : (
           <button
-            onClick={() => setShowImageOptions(true)}
-            className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex flex-col items-center justify-center gap-1 border-2 border-dashed border-blue-300 rounded-xl text-blue-600 hover:bg-blue-50 hover:border-blue-500 transition-all shadow-sm hover:shadow-md"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploadingImage || validatingImage}
+            className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 flex flex-col items-center justify-center gap-1 border-2 border-dashed border-blue-300 rounded-xl text-blue-600 hover:bg-blue-50 hover:border-blue-500 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Upload className="w-5 h-5" />
-            <span className="text-xs font-medium">הוספת תמונה</span>
+            {(validatingImage || isUploadingImage) ? (
+              <>
+                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-medium">מעלה תמונה</span>
+              </>
+            ) : (
+              <>
+                <Upload className="w-5 h-5" />
+                <span className="text-xs font-medium">הוספת תמונה</span>
+              </>
+            )}
           </button>
         )}
       </div>
 
-      {/* תפריט אפשרויות תמונה */}
-      {showImageOptions && (
-        <div className="mt-3 p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl shadow-lg border border-gray-200 animate-slide-down">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="text-sm font-bold text-gray-900">אפשרויות תמונה</h4>
-            <button
-              onClick={() => setShowImageOptions(false)}
-              className="text-gray-400 hover:text-gray-700 hover:bg-gray-200 p-1 rounded-lg transition-all"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl flex items-center justify-center gap-2 text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95"
-            >
-              <Upload className="w-4 h-4" />
-              <span>העלה מהמכשיר</span>
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept="image/*"
-              onChange={handleImageUpload}
-            />
-          </div>
-        </div>
-      )}
+      {/* Input מוסתר להעלאת תמונה */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={handleImageUpload}
+      />
 
       {/* תפריט בחירת תאריך תפוגה */}
       {showExpiryDatePicker && (
