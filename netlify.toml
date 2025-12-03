@@ -1,6 +1,11 @@
 [build]
   publish = "build"
   command = "npm run build"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["openai"]
 
 # הגדרות ניתוב SPA
 [[redirects]]
