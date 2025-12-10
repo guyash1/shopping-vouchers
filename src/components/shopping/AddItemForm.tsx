@@ -345,7 +345,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
               : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
           }`}
           aria-label="כמות"
-          placeholder="1"
+          placeholder="כמות"
         />
         <button
           type="submit"

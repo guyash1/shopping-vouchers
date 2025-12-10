@@ -1027,6 +1027,31 @@ export default function ShoppingList() {
   // הערה: מצב קניות יכול להיות פעיל גם בלי פריטים בעגלה
   // המשתמש יכול להתחיל קניות ואז להוסיף פריטים לעגלה בזמן הקנייה
 
+  // פונקציה לשינוי קטגוריה של מוצר
+  const handleChangeCategory = useCallback(async (id: string, newCategory: ShoppingCategory) => {
+    if (!user) {
+      openAuthModal('edit');
+      return;
+    }
+
+    try {
+      const itemRef = doc(db, 'items', id);
+      await updateDoc(itemRef, {
+        category: newCategory,
+        updatedAt: serverTimestamp()
+      });
+
+      // עדכון הסטייט המקומי
+      setItems(prev =>
+        prev.map(item =>
+          item.id === id ? { ...item, category: newCategory } : item
+        )
+      );
+    } catch (error) {
+      console.error('שגיאה בשינוי קטגוריה:', error);
+    }
+  }, [user, openAuthModal]);
+
   // פונקציה לעריכת שם המוצר
   const handleEditName = useCallback(async (id: string, newName: string) => {
     if (!user) {
@@ -1329,6 +1354,7 @@ export default function ShoppingList() {
                       onUploadImage={handleUploadImage}
                       onChangeQuantity={handleSaveQuantity}
                       onEditName={handleEditName}
+                      onChangeCategory={handleChangeCategory}
                       household={selectedHousehold}
                     />
                   </div>
