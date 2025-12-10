@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShoppingCart, AlertCircle, MinusCircle, PlusCircle, X, Edit, Camera, Trash2, RefreshCw, ChevronDown, Tag } from 'lucide-react';
+import { ShoppingCart, AlertCircle, MinusCircle, PlusCircle, X, Edit, Camera, Trash2, RefreshCw, ChevronDown } from 'lucide-react';
 import { Item, ShoppingCategory } from '../../types/shopping';
 import Modal from 'react-modal';
 import { EditNameModal } from './EditNameModal';
