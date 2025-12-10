@@ -23,7 +23,8 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
   historyItems = [], // ברירת מחדל למקרה שלא מועבר
   activeItems = [] // ברירת מחדל למקרה שלא מועבר
 }) => {
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<string>('1');
+  const [quantityError, setQuantityError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [validatingImage, setValidatingImage] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -166,6 +167,13 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
     
     if (!inputValue.trim()) return;
 
+    // בדיקת כמות תקינה
+    const quantityNum = parseInt(quantity);
+    if (!quantity || isNaN(quantityNum) || quantityNum < 1) {
+      setQuantityError(true);
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -176,7 +184,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
 
       await onAddItem(
         inputValue.trim(),
-        quantity,
+        quantityNum,
         // אם יש מוצר קיים בהיסטוריה ונבחרה תמונה חדשה - נעדכן את התמונה שלו
         existingItem ? selectedImage || undefined : selectedImage || undefined,
         // אם יש מוצר קיים בהיסטוריה ואין תמונה חדשה - נשתמש בתמונה הקיימת
@@ -185,7 +193,8 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
 
       // איפוס הטופס
       setInputValue('');
-      setQuantity(1);
+      setQuantity('1');
+      setQuantityError(false);
       setSelectedImage(null);
       setImagePreview(null);
       setShowDropdown(false);
@@ -241,6 +250,11 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-md p-3 sm:p-4 mb-3 border border-gray-100 animate-fade-in">
+      {quantityError && (
+        <div className="mb-2 text-red-600 text-sm font-medium text-center bg-red-50 py-1.5 px-3 rounded-lg border border-red-200 animate-fade-in">
+          ⚠️ יש להזין כמות
+        </div>
+      )}
       <div className="flex gap-2 mb-3 relative">
         <div className="flex-1 relative">
           <input
@@ -307,15 +321,35 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
         
         <input
           type="number"
+          inputMode="numeric"
+          pattern="[0-9]*"
           value={quantity}
-          onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+          onChange={(e) => {
+            const val = e.target.value;
+            // מאפשר שדה ריק או מספרים בלבד
+            if (val === '' || /^\d+$/.test(val)) {
+              setQuantity(val);
+              setQuantityError(false);
+            }
+          }}
+          onBlur={() => {
+            // בדיקת ולידציה באיבוד פוקוס
+            if (!quantity || parseInt(quantity) < 1) {
+              setQuantityError(true);
+            }
+          }}
           min="1"
-          className="w-16 sm:w-20 px-2 py-2 sm:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold shadow-sm hover:shadow-md transition-all"
+          className={`w-16 sm:w-20 px-2 py-2 sm:py-3 border-2 rounded-xl focus:outline-none focus:ring-2 text-center font-bold shadow-sm hover:shadow-md transition-all ${
+            quantityError 
+              ? 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-red-50' 
+              : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+          }`}
           aria-label="כמות"
+          placeholder="1"
         />
         <button
           type="submit"
-          disabled={loading || validatingImage || !inputValue.trim()}
+          disabled={loading || validatingImage || !inputValue.trim() || !quantity || parseInt(quantity) < 1}
           className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 py-2 sm:py-3 rounded-xl hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 font-bold shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95"
           aria-label="הוספת פריט חדש לרשימה"
           title="הוסף פריט חדש לרשימה"
