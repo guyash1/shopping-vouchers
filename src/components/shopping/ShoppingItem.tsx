@@ -73,6 +73,7 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
   const [isEditNameModalOpen, setIsEditNameModalOpen] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
+  const [dropdownDirection, setDropdownDirection] = useState<'down' | 'up'>('down');
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   // סגירת dropdown בלחיצה מחוץ לאזור
@@ -165,7 +166,7 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
   };
 
   return (
-    <div className={`flex flex-col gap-2 p-3 sm:p-4 rounded-2xl shadow-lg hover:shadow-2xl transition-all ${getItemBackgroundColor(item.status)} relative border-b border-gray-100 border-r-4 ${userColor.border} animate-fade-in`}>
+    <div className={`flex flex-col gap-2 p-3 sm:p-4 rounded-xl shadow-sm hover:shadow-md transition-all ${getItemBackgroundColor(item.status)} relative border-b border-gray-100 border-r-4 ${userColor.border} animate-fade-in`}>
       {/* שורה עליונה: תמונה + תוכן + כמות + מחיקה */}
       <div className="flex gap-3 items-start">
         {/* תמונת המוצר */}
@@ -202,8 +203,8 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
         {/* תוכן המוצר - שם + תגיות */}
         <div className="flex-1 min-w-0">
           {/* שם המוצר */}
-          <div className="flex items-center gap-1 mb-1">
-            <div className="font-medium text-gray-800 leading-tight break-words flex-1">
+          <div className="flex items-start gap-1 mb-1">
+            <div className="font-medium text-gray-800 leading-tight break-words">
               {item.name}
             </div>
             {onEditName && (
@@ -230,11 +231,23 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
             {/* תג קטגוריה - לחיץ לשינוי */}
             <div className="relative" ref={categoryDropdownRef}>
               <button
-                onClick={() => onChangeCategory && setShowCategoryDropdown(!showCategoryDropdown)}
+                onClick={() => {
+                  if (!onChangeCategory) return;
+                  
+                  // בדיקה אם יש מקום למטה או צריך לפתוח למעלה
+                  const rect = categoryDropdownRef.current?.getBoundingClientRect();
+                  if (rect) {
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const dropdownHeight = 280; // max-h-[280px]
+                    setDropdownDirection(spaceBelow < dropdownHeight + 20 ? 'up' : 'down');
+                  }
+                  
+                  setShowCategoryDropdown(!showCategoryDropdown);
+                }}
                 disabled={!onChangeCategory || isUpdatingCategory}
                 className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium transition-all ${
                   isGeneralCategory
-                    ? 'bg-amber-100 text-amber-700 border border-amber-300 border-dashed animate-pulse-subtle'
+                    ? 'bg-gray-200 text-gray-600 border border-gray-300 border-dashed animate-pulse-subtle'
                     : `${categoryConfig.bgColor} ${categoryConfig.color}`
                 } ${onChangeCategory ? 'cursor-pointer hover:opacity-80 hover:shadow-sm' : 'cursor-default'}`}
                 title={onChangeCategory ? 'לחץ לשינוי קטגוריה' : undefined}
@@ -262,7 +275,10 @@ export const ShoppingItem: React.FC<ShoppingItemProps> = React.memo(({
                   <div 
                     className="fixed z-[101] bg-white rounded-xl shadow-2xl border border-gray-200 py-1 min-w-[220px] max-h-[280px] overflow-y-auto animate-slide-down"
                     style={{
-                      top: (categoryDropdownRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
+                      ...(dropdownDirection === 'down' 
+                        ? { top: (categoryDropdownRef.current?.getBoundingClientRect().bottom ?? 0) + 4 }
+                        : { bottom: window.innerHeight - (categoryDropdownRef.current?.getBoundingClientRect().top ?? 0) + 4 }
+                      ),
                       right: Math.max(8, window.innerWidth - (categoryDropdownRef.current?.getBoundingClientRect().right ?? 0)),
                     }}
                   >

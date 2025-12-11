@@ -23,6 +23,23 @@ import { ScrollToTop } from './shared/ScrollToTop';
 
 Modal.setAppElement('#root');
 
+// מיפוי קטגוריות לאייקונים ולצבעים
+const CATEGORY_CONFIG: Record<ShoppingCategory, { emoji: string; color: string; bgColor: string }> = {
+  'פירות, ירקות ופיצוחים': { emoji: '🥬', color: 'text-green-700', bgColor: 'bg-green-100' },
+  'מוצרי חלב וביצים': { emoji: '🥛', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+  'בשר, עוף ודגים': { emoji: '🥩', color: 'text-red-700', bgColor: 'bg-red-100' },
+  'לחמים ומוצרי מאפה': { emoji: '🍞', color: 'text-amber-700', bgColor: 'bg-amber-100' },
+  'משקאות, יין, אלכוהול וסנקים': { emoji: '🍷', color: 'text-purple-700', bgColor: 'bg-purple-100' },
+  'מזון מקורר, קפוא ונקניקים': { emoji: '🧊', color: 'text-cyan-700', bgColor: 'bg-cyan-100' },
+  'בישול אפיה ושימורים': { emoji: '🥫', color: 'text-orange-700', bgColor: 'bg-orange-100' },
+  'חטיפים מתוקים ודגני בוקר': { emoji: '🍫', color: 'text-pink-700', bgColor: 'bg-pink-100' },
+  'פארם וטיפוח': { emoji: '🧴', color: 'text-teal-700', bgColor: 'bg-teal-100' },
+  'עולם התינוקות': { emoji: '👶', color: 'text-sky-700', bgColor: 'bg-sky-100' },
+  'ניקיון לבית וחד פעמי': { emoji: '🧹', color: 'text-indigo-700', bgColor: 'bg-indigo-100' },
+  'ויטמינים ותוספי תזונה': { emoji: '💊', color: 'text-emerald-700', bgColor: 'bg-emerald-100' },
+  'כללי': { emoji: '📦', color: 'text-gray-600', bgColor: 'bg-gray-200' },
+};
+
 export default function ShoppingList() {
   const { selectedHousehold } = useHousehold();
   const [user] = useAuthState(auth);
@@ -82,31 +99,31 @@ export default function ShoppingList() {
   const getCategoryIcon = (category?: ShoppingCategory) => {
     switch (category) {
       case 'פירות, ירקות ופיצוחים':
-        return <Apple className="w-5 h-5 text-green-500" />;
+        return <Apple className="w-5 h-5 text-green-600" />;
       case 'מוצרי חלב וביצים':
-        return <Milk className="w-5 h-5 text-blue-500" />;
+        return <Milk className="w-5 h-5 text-blue-600" />;
       case 'בשר, עוף ודגים':
-        return <Beef className="w-5 h-5 text-red-500" />;
+        return <Beef className="w-5 h-5 text-red-600" />;
       case 'לחמים ומוצרי מאפה':
-        return <Cake className="w-5 h-5 text-amber-500" />;
+        return <Cake className="w-5 h-5 text-amber-600" />;
       case 'משקאות, יין, אלכוהול וסנקים':
         return <Coffee className="w-5 h-5 text-purple-600" />;
       case 'מזון מקורר, קפוא ונקניקים':
-        return <Fish className="w-5 h-5 text-cyan-500" />;
+        return <Fish className="w-5 h-5 text-cyan-600" />;
       case 'בישול אפיה ושימורים':
         return <Package className="w-5 h-5 text-yellow-600" />;
       case 'חטיפים מתוקים ודגני בוקר':
-        return <Candy className="w-5 h-5 text-pink-500" />;
+        return <Candy className="w-5 h-5 text-pink-600" />;
       case 'פארם וטיפוח':
-        return <Heart className="w-5 h-5 text-purple-500" />;
+        return <Heart className="w-5 h-5 text-purple-600" />;
       case 'עולם התינוקות':
-        return <Heart className="w-5 h-5 text-pink-400" />;
+        return <Heart className="w-5 h-5 text-pink-600" />;
       case 'ניקיון לבית וחד פעמי':
-        return <Droplets className="w-5 h-5 text-blue-400" />;
+        return <Droplets className="w-5 h-5 text-blue-600" />;
       case 'ויטמינים ותוספי תזונה':
         return <Heart className="w-5 h-5 text-green-600" />;
       default:
-        return <Package className="w-5 h-5 text-gray-500" />;
+        return <Package className="w-5 h-5 text-gray-600" />;
     }
   };
 
@@ -1221,7 +1238,7 @@ export default function ShoppingList() {
       
       <ScrollToTop />
       
-      <div className="max-w-md mx-auto p-4 pb-24">
+      <div className="max-w-md mx-auto p-4 pb-6">
 
       <AddItemForm 
         onAddItem={handleAddItem}
@@ -1232,7 +1249,7 @@ export default function ShoppingList() {
 
       {/* Shopping mode toggle - קטן ומשני */}
       {(items.some(item => item.status === 'pending') || (isShoppingActive && activeShoppingCount > 0)) && (
-        <div className="flex justify-center mb-3 animate-fade-in">
+        <div className="flex justify-center mb-4 animate-fade-in">
           <button
             onClick={() => {
               // אם יש פריטים מסומנים במצב קניות, סיום קניות
@@ -1243,12 +1260,12 @@ export default function ShoppingList() {
                 toggleShoppingMode();
               }
             }}
-            className={`px-6 py-2.5 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all ${
+            className={`px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all hover:scale-105 active:scale-95 ${
               isShoppingActive && activeShoppingCount > 0
-                ? 'bg-green-600 hover:bg-green-700' 
+                ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' 
                 : isShoppingActive 
-                  ? 'bg-yellow-500 hover:bg-yellow-600' 
-                  : 'bg-blue-600 hover:bg-blue-700'
+                  ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700' 
+                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
             }`}
           >
             {isShoppingActive && activeShoppingCount > 0
@@ -1263,7 +1280,7 @@ export default function ShoppingList() {
 
       {/* Shopping progress statistics */}
       {isShoppingActive && displayItems.length > 0 && (
-        <div className="bg-gradient-to-br from-white via-gray-50 to-blue-50 rounded-xl shadow-md p-3 sm:p-4 mb-3 border border-gray-100 animate-fade-in">
+        <div className="bg-gradient-to-br from-blue-50 via-white to-blue-50 rounded-lg shadow-sm p-4 sm:p-5 mb-4 border border-blue-100 animate-fade-in">
           <div className="flex justify-between items-center mb-3">
             <span className="text-sm sm:text-base font-bold text-gray-700">התקדמות קניות</span>
             <span className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{Math.round(stats.progress)}%</span>
@@ -1327,10 +1344,10 @@ export default function ShoppingList() {
           <p className="text-gray-600">טוען פריטים...</p>
         </div>
       ) : displayItems.length > 0 ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {groupedItems.map(group => (
-            <div key={group.category} className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+            <div key={group.category} className={`${CATEGORY_CONFIG[group.category as ShoppingCategory]?.bgColor || 'bg-gray-50'} rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all`}>
+              <div className={`${CATEGORY_CONFIG[group.category as ShoppingCategory]?.bgColor || 'bg-gray-50'} px-4 py-3 border-b border-gray-200`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {getCategoryIcon(group.category as ShoppingCategory)}
@@ -1368,7 +1385,7 @@ export default function ShoppingList() {
             <div className="flex justify-center mt-6">
               <button
                 onClick={handleFinishShopping}
-                className="px-6 py-2.5 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all bg-green-600 hover:bg-green-700"
+                className="px-8 py-3 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transition-all hover:scale-105 active:scale-95 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
               >
                 סיום קניות
               </button>
@@ -1378,7 +1395,7 @@ export default function ShoppingList() {
       ) : (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg">
               <ShoppingCart className="w-9 h-9 text-white" />
             </div>
           </div>

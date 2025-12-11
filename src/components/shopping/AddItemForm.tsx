@@ -249,7 +249,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-md p-3 sm:p-4 mb-3 border border-gray-100 animate-fade-in">
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 border border-gray-200 animate-fade-in hover:shadow-md transition-all">
       {quantityError && (
         <div className="mb-2 text-red-600 text-sm font-medium text-center bg-red-50 py-1.5 px-3 rounded-lg border border-red-200 animate-fade-in">
           ⚠️ יש להזין כמות
@@ -266,7 +266,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             placeholder="הוספת פריט חדש..."
-            className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm hover:shadow-md"
+            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
             dir="rtl"
             autoComplete="off"
           />
@@ -339,10 +339,10 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
             }
           }}
           min="1"
-          className={`w-16 sm:w-20 px-2 py-2 sm:py-3 border-2 rounded-xl focus:outline-none focus:ring-2 text-center font-bold shadow-sm hover:shadow-md transition-all ${
+          className={`w-16 sm:w-20 px-2 py-2.5 sm:py-3 border rounded-lg focus:outline-none focus:ring-2 text-center font-bold transition-all ${
             quantityError 
               ? 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-red-50' 
-              : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+              : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
           }`}
           aria-label="כמות"
           placeholder="כמות"
@@ -350,7 +350,7 @@ export const AddItemForm: React.FC<AddItemFormProps> = ({
         <button
           type="submit"
           disabled={loading || validatingImage || !inputValue.trim() || !quantity || parseInt(quantity) < 1}
-          className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 py-2 sm:py-3 rounded-xl hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 font-bold shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95"
+          className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2.5 sm:py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 font-semibold shadow-md hover:shadow-lg transition-all hover:scale-105 active:scale-95"
           aria-label="הוספת פריט חדש לרשימה"
           title="הוסף פריט חדש לרשימה"
         >
