@@ -36,16 +36,15 @@ export default function Header({
         // ואז ננסה לטעון את הפרופיל המלא
         const profile = await userService.getUserProfile(user.uid);
         if (profile) {
-          // נציג את השם המלא (firstName + lastName) אם יש, אחרת displayName
+          // נציג רק את השם הפרטי
           let name = 'משתמש';
-          if (profile.firstName && profile.lastName) {
-            name = `${profile.firstName} ${profile.lastName}`.trim();
-          } else if (profile.firstName) {
+          if (profile.firstName) {
             name = profile.firstName;
           } else if (profile.displayName) {
-            name = profile.displayName;
+            // אם אין שם פרטי, ניקח רק את המילה הראשונה מ-displayName
+            name = profile.displayName.split(' ')[0];
           } else if (user.displayName) {
-            name = user.displayName;
+            name = user.displayName.split(' ')[0];
           }
           setUserDisplayName(name);
         }
